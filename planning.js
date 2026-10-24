@@ -85,6 +85,46 @@ globalThis.Planning = (() => {
     '보건':['건강 상황 사례','선택지가 있는 상황 카드','실천 계획 점검표']
   };
   function subjectList(answers){return (Array.isArray(answers.subjects)?answers.subjects:[answers.subjects]).filter(Boolean);}
+  const jong=w=>{const c=String(w).charCodeAt(String(w).length-1)-0xAC00;return c>=0&&c<11172&&c%28!==0;};
+  const eul=w=>w+(jong(w)?'을 ':'를 '),iga=w=>w+(jong(w)?'이 ':'가 '),wagwa=w=>w+(jong(w)?'과 ':'와 ');
+  const vocab={
+    '국어':{mat:'글·시·대화 자료',product:'쓴 글',tool:'낱말·문장 카드를 끌어 문장 완성하기',evidence:'근거 문장',view:'글이 길어도 읽기 편한 큰 글자와 줄 간격'},
+    '수학':{mat:'수·도형·표 자료',product:'풀이 과정',tool:'수·식 카드를 옮겨 풀이 순서 맞추기',evidence:'풀이의 근거',view:'수식과 도형이 선명한 큰 화면'},
+    '사회':{mat:'지도·통계·사진 자료',product:'의견과 제안',tool:'자료 카드를 근거로 연결하기',evidence:'자료 근거',view:'지도와 통계표가 잘 보이는 큰 자료 영역'},
+    '과학':{mat:'관찰·측정 자료',product:'예상과 결과 기록',tool:'조건 슬라이더를 움직여 결과 확인하기',evidence:'관찰·측정 근거',view:'그래프와 사진이 선명한 화면'},
+    '영어':{mat:'대화문·음성 자료',product:'말하거나 쓴 문장',tool:'표현 카드를 골라 대화 완성하기',evidence:'단서 표현',view:'표현 카드가 크게 보이는 화면'},
+    '도덕':{mat:'사례 이야기',product:'내 생각과 이유',tool:'입장 카드를 놓고 이유 고르기',evidence:'가치와 이유',view:'사례를 읽기 편한 큰 글자'},
+    '역사':{mat:'사료·연표 자료',product:'재구성한 역사 설명',tool:'사건 카드를 시간순으로 배열하기',evidence:'사료 근거',view:'사료와 연표가 함께 보이는 화면'},
+    '음악':{mat:'음원·악보 자료',product:'만든 리듬·가락',tool:'리듬 블록을 눌러 가락 만들기',evidence:'들은 특징',view:'재생 버튼과 악보가 큰 화면'},
+    '미술':{mat:'작품 이미지',product:'스케치·감상 글',tool:'작품 요소 카드를 골라 비교하기',evidence:'표현 요소',view:'작품 이미지가 크게 보이는 화면'},
+    '체육':{mat:'경기 장면 그림',product:'작전·운동 기록',tool:'작전판에서 위치 카드를 옮기기',evidence:'움직임 관찰',view:'작전판과 기록표가 큰 화면'},
+    '실과':{mat:'생활 문제·재료 자료',product:'제작 계획',tool:'재료·단계 카드를 골라 계획 세우기',evidence:'선택의 이유',view:'단계가 한눈에 보이는 화면'},
+    '기술·가정':{mat:'생활 문제·설계 자료',product:'설계안',tool:'설계 대안 카드를 비교해 고르기',evidence:'선택의 이유',view:'절차와 안전 표시가 눈에 띄는 화면'},
+    '정보':{mat:'절차·데이터 카드',product:'문제 해결 절차',tool:'절차 카드를 끌어 순서 구성하기',evidence:'실행 결과',view:'절차 카드가 큰 화면'},
+    '통합교과':{mat:'그림·사진 카드',product:'그림과 말로 표현한 결과',tool:'그림 카드를 눌러 분류·선택하기',evidence:'관찰한 점',view:'그림이 크고 글자가 쉬운 화면'},
+    '창의적 체험활동':{mat:'의견·계획 카드',product:'활동 계획',tool:'의견 카드에 공감하고 우선순위 정하기',evidence:'모은 의견',view:'의견 카드가 모아 보이는 화면'},
+    '진로':{mat:'직업·진로 카드',product:'진로 계획',tool:'관심 카드를 골라 나의 지도 만들기',evidence:'나의 관심과 강점',view:'카드와 계획표가 보이는 화면'},
+    '보건':{mat:'건강 상황 사례',product:'실천 계획',tool:'상황별 행동 카드를 고르고 이유 쓰기',evidence:'건강 정보 근거',view:'상황 사례를 읽기 쉬운 화면'}
+  };
+  const vocabFor=s=>s.startsWith('제2외국어')?{...vocab['영어'],mat:langName(s)+' 대화문·음성 자료',product:langName(s)+'로 말하거나 쓴 문장'}:vocab[s];
+  const generators={
+    method:v=>[`${eul(v.mat)}탐색하며 ${eul(v.evidence)}표시하기`,`${eul(v.product)}먼저 만든 뒤 친구와 비교하기`,v.tool,`모둠이 ${eul(v.evidence)}모아 ${eul(v.product)}정리하기`],
+    flow:v=>[`안내 → ${v.mat} 살펴보기 → ${v.product} 만들기 → 공유 → 돌아보기`,`질문 → ${v.evidence} 찾기 → ${v.product} 비교 → 수정 → 정리`],
+    rules:v=>[`${eul(v.mat)}모두 확인하면 다음 단계 열기`,`${eul(v.product)}제출 전에 자유롭게 수정할 수 있게 하기`,`${iga(v.evidence)}비어 있으면 해당 위치를 안내하되 진행은 막지 않기`],
+    feedback:v=>[`${iga(v.evidence)}부족하면 ${eul(v.mat)}다시 보도록 안내`,`${eul(v.product)}열린 답으로 두고 자동 채점하지 않기`,'맞은 부분은 유지하고 바꿀 부분만 안내'],
+    interaction:v=>[v.tool,`${eul(v.evidence)}골라 짧은 글로 쓰기`,`${eul(v.product)}작성하고 수정하기`,`${v.mat}에 관한 객관식 선택·투표`,`친구의 ${v.product}에 답글·공감 남기기`,'자료를 읽고 말이나 종이로 답하기'],
+    input:v=>[`${v.product} 300자 이내 · 공백만 제출 불가 · 결과에서 수정 가능`,`${wagwa(v.evidence)}이유를 따로 입력 · 제한은 직접 정하기`,'카드 선택만 사용 · 선택 누락 시 안내'],
+    output:v=>[`${eul(v.product)}결과 화면에 모아 발표`,`초안과 수정한 ${eul(v.product)}나란히 보고 변화 설명`,`${eul(v.evidence)}한눈에 모아 보기`,`${eul(v.product)}파일로 내려받아 공유`],
+    teacherView:v=>[`${eul(v.product)}카드로 모아보기`,`${eul(v.evidence)}키워드로 모아보기`],
+    features:v=>[`${eul(v.mat)}다시 보기`,`${eul(v.evidence)}표시·강조하는 기능`,`${eul(v.product)}임시 보관하고 이어서 하기`],
+    design:v=>[v.view,`${iga(v.mat)}가장 먼저 보이는 카드 중심 화면`],
+    visual:v=>[`${v.view} · 포인트 색 한 가지`],
+    roles:v=>[`조작 · ${eul(v.evidence)}확인 · 설명 역할을 단계마다 교대`],
+    exclusions:v=>[`${eul(v.product)}자동 점수화하는 기능 제외`],
+    acceptance:v=>[`${v.tool} 활동이 클릭·터치로 막힘 없이 동작`,`${eul(v.mat)}다시 볼 수 있고 읽은 상태가 유지`,`${eul(v.product)}수정하면 결과 화면도 갱신`,`${v.view}에서 글자와 자료가 잘림 없이 표시`]
+  };
+  const mixBase=new Set(['features','design','visual','exclusions','acceptance','output','teacherView','method','flow','rules','feedback']);
+  function subjectGenerated(id,answers){const gen=generators[id];if(!gen)return[];const out=[];subjectList(answers).forEach(s=>{const v=vocabFor(s);if(v)gen(v).forEach(label=>out.push({label,group:s,value:label}));});return out;}
   function bySubject(answers,kind,langFn,table){const out=[];subjectList(answers).forEach(s=>{const items=s.startsWith('제2외국어')?langFn(langName(s)):table[s];if(items)items.forEach(label=>out.push({label,group:s,value:label}));});return out;}
   const common=['자료 탐색하기','비교하고 분류하기','함께 토론하기','함께 만들기','조건 바꾸기','문제 해결하기','복습하고 확인하기','활동 돌아보기'];
   const branches=[
@@ -133,8 +173,9 @@ globalThis.Planning = (() => {
   function activityOptions(answers){const subjects=Array.isArray(answers.subjects)?answers.subjects:[answers.subjects].filter(Boolean);return subjects.flatMap(subject=>(activities[subject]||common).map(label=>({label,group:subject,value:`${subject} · ${label}`})));}
   function selectedBranches(answers){const text=value(answers,'activity');const matched=branches.filter(b=>b.match.test(text));return matched.length?matched:branches.slice(0,4);}
   function options(id,answers){if(id==='activity')return activityOptions(answers);
+    {const g=subjectGenerated(id,answers);if(g.length&&!['objective','story','materials'].includes(id)){const baseAll=['method','flow','rules','feedback'].includes(id)?null:(steps.find(s=>s.id===id)?.options||[]);if(baseAll===null){/* handled below */}else if(mixBase.has(id)){const seen=new Set(g.map(x=>x.label));return [...g,...baseAll.filter(l=>!seen.has(l)).map(l=>({label:l,group:'공통',value:l}))];}else return g;}}
     const subjectSpecific={objective:[langObjectives,objectives],story:[langStory,stories],materials:[langMaterials,materialSets]}[id];
-    if(subjectSpecific){const list=bySubject(answers,id,...subjectSpecific);if(list.length)return list;}if(['method','materials','flow','rules','feedback'].includes(id)){const key=id==='method'?'methods':id;const seen=new Set();return selectedBranches(answers).flatMap(b=>b[key].filter(label=>{if(seen.has(label))return false;seen.add(label);return true;}).map(label=>({label,group:b.label,value:label})));}return steps.find(s=>s.id===id)?.options||[];}
+    if(subjectSpecific){const list=bySubject(answers,id,...subjectSpecific);if(list.length)return list;}if(['method','materials','flow','rules','feedback'].includes(id)){const key=id==='method'?'methods':id;const seen=new Set(subjectGenerated(id,answers).map(x=>x.label));return [...subjectGenerated(id,answers),...selectedBranches(answers).flatMap(b=>b[key].filter(label=>{if(seen.has(label))return false;seen.add(label);return true;}).map(label=>({label,group:b.label,value:label})))];}return steps.find(s=>s.id===id)?.options||[];}
   const sectionDefs=[
     ['기본 수업 정보',['project','school','grades','subjects','idea','objective','duration']],
     ['사용 환경 및 접속 방식',['participants','devices','access','roles']],
@@ -178,9 +219,11 @@ globalThis.Planning = (() => {
 ## 7. 완료 기준
 흐름·자료/정답 정확성·재도전·입력/수정·호환·저장/초기화·수업 시간에 대해 '어떤 조작을 하면 어떤 결과가 보여야 하는가' 형태의 검증 기준을 작성. 정의하지 않은 동작의 성공을 선언하지 않는다. 끝에 교사 검토가 필요한 제안과 미정 사항을 따로 정리.
 분량보다 일관성을 우선하되 문구와 동작을 생략한 요약문으로 축약하지 않는다. 마크다운 제목·문단·목록으로 작성하고 코드 블록으로 전체를 감싸지 않는다.`;
+  const prdParts=[[1,2],[3],[4,5,6]];
+  function promptPart(answers,current,instruction,nums,context=''){return `${specification}\n\n[이번 요청의 작성 범위] 위 7개 섹션 중 ${nums.map(n=>`"## ${n}."`).join(', ')} 섹션만 작성한다. 다른 섹션은 다른 요청이 작성하므로 쓰지 않는다. 각 섹션은 "## 번호. 제목"으로 시작한다. 확정 답변을 기준으로 용어·버튼 이름·시간을 일관되게 맞춘다.${context?`\n\n[이미 작성된 활동 구성 섹션 — 이 내용의 자료 ID·단계·버튼 이름과 일치시킨다]\n${context}`:''}\n\n사용자 요청:\n${instruction}\n\n확정한 질문별 답변:\n${labeledAnswers(answers)}${current?`\n\n기존 문서:\n${current}`:''}\n\n앱에서 발견한 확인 필요 사항:\n${conflicts(answers).join('\n')||'없음'}\n\n출력은 JSON 하나만: {"sections":[{"n":번호,"markdown":"해당 섹션 전체(제목 포함) 마크다운"}]}`;}
   function prompt(answers,current,instruction){return `${specification}\n\n사용자 요청:\n${instruction}\n\n확정한 질문별 답변(JSON 데이터):\n${JSON.stringify(answers)}\n\n기존 문서:\n${current}\n\n앱에서 발견한 확인 필요 사항:\n${conflicts(answers).join('\n')||'없음'}`;}
   function labeledAnswers(answers){return steps.filter(s=>answers[s.id]&&(!s.when||s.when(answers))).map(s=>`- ${s.title}: ${value(answers,s.id)}`).join('\n')||'(아직 정한 답변 없음)';}
-  function coachPrompt(answers,id,request,proposal=false){const s=steps.find(s=>s.id===id);return `당신은 수업 웹앱 설계 동료다. 한국어로 대화한다. 사용자는 아래의 수업을 설계하고 있고, 지금까지 정한 답변과 일관되게 도와야 한다.\n[지금까지 정한 수업 정보]\n${labeledAnswers(answers)}\n\n[지금 정하는 질문] ${s?.question||'최종 검토'}\n[활동 분기] ${selectedBranches(answers).map(b=>b.label).join(', ')}\n\n규칙: 위 과목·학교급·학년·단원 주제·배움의 목표·활동에 반드시 맞는 내용만 쓴다. 다른 과목에도 그대로 쓸 수 있는 일반적인 답을 하지 않는다. 이미 정한 답변과 충돌하면 그 점을 알린다. 사용자가 정하지 않은 내용은 [제안]이라고 표시한다. 평가 요소를 추천하는 요청으로 오해하지 않는다. 교과서나 성취기준은 추측하지 않는다.\n${proposal?'현재 질문에 들어갈 구체적인 답변 초안 1개만 작성한다. 활동·주제를 연결하고 실제 문구·개수·조건을 필요한 만큼 제안한다. 다른 단계로 진행하거나 전체 PRD를 쓰지 않는다. 마크다운 기호 없이 순수한 문장으로만 쓴다.':'사용자의 질문에 설명하고 가능한 선택지를 비교한다. 답변을 확정하거나 자동으로 다음 단계로 넘어가지 않는다. 마크다운 표·제목·구분선을 쓰지 말고 짧은 문단과 \"- \" 목록으로만 쓴다. 비교는 항목마다 한두 문장으로 쓴다. 마지막에는 사용자가 현재 질문의 답변으로 바로 고를 수 있는 선택지를 3~4개 제시하되, 반드시 빈 줄 다음에 [선택지] 한 줄을 쓰고 그 아래에 줄마다 \"- 문장\" 형식으로 쓴다. 선택지 문장은 답변으로 그대로 쓸 수 있는 짧은 문장이어야 하며 질문 형태가 아니어야 한다.'}\n사용자 메시지: ${request}`;}
+  function coachPrompt(answers,id,request,proposal=false){const s=steps.find(s=>s.id===id);return `당신은 수업 웹앱 설계 동료다. 한국어로 대화한다. 사용자는 아래의 수업을 설계하고 있고, 지금까지 정한 답변과 일관되게 도와야 한다.\n[지금까지 정한 수업 정보]\n${labeledAnswers(answers)}\n\n[지금 정하는 질문] ${s?.question||'최종 검토'}\n[활동 분기] ${selectedBranches(answers).map(b=>b.label).join(', ')}\n\n규칙: 위 과목·학교급·학년·단원 주제·배움의 목표·활동에 반드시 맞는 내용만 쓴다. 다른 과목에도 그대로 쓸 수 있는 일반적인 답을 하지 않는다. 이미 정한 답변과 충돌하면 그 점을 알린다. 사용자가 정하지 않은 내용은 [제안]이라고 표시한다. 평가 요소를 추천하는 요청으로 오해하지 않는다. 교과서나 성취기준은 추측하지 않는다.\n${proposal?'현재 질문에 들어갈 구체적인 답변 초안 1개만 작성한다. 활동·주제를 연결하고 실제 문구·개수·조건을 필요한 만큼 제안한다. 다른 단계로 진행하거나 전체 PRD를 쓰지 않는다. 마크다운 기호 없이 순수한 문장으로만, 간결하게 쓴다. JSON {"draft":"초안"} 하나만 출력한다.':'사용자의 질문에 간결하게 설명하고 가능한 선택지를 비교한다. 답변을 확정하거나 자동으로 다음 단계로 넘어가지 않는다. answer에는 마크다운 표·제목·구분선 없이 짧은 문단과 "- " 목록만 쓰고 600자 이내로 한다. choices에는 사용자가 현재 질문의 답변으로 바로 고를 수 있는 짧은 문장 3~4개를 쓴다(질문 형태 금지). JSON {"answer":"...","choices":["...","..."]} 하나만 출력한다.'}\n사용자 메시지: ${request}`;}
   function migrate(saved){if(!saved||!saved.answers||!Array.isArray(saved.messages))return null;const next={...saved,version:2};if(saved.version!==2){next.step=steps.findIndex(s=>!saved.answers[s.id]);if(next.step<0)next.step=steps.length;next.draftStale=!!saved.draft;}else next.step=Math.min(Math.max(Number(saved.step)||0,0),steps.length);return next;}
-  return {steps,visibleSteps,groups,options,sections,checks,conflicts,prompt,coachPrompt,migrate,selectedBranches};
+  return {steps,visibleSteps,groups,options,sections,checks,conflicts,prompt,promptPart,prdParts,coachPrompt,migrate,selectedBranches};
 })();

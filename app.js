@@ -66,7 +66,7 @@ function render(){
   $('ai-suggest').hidden=!def||state.step<3;$('ai-suggest').disabled=busy;
   $('generate-final').hidden=!!def;$('generate-final').disabled=busy;
   $('selection-note').textContent=def?.multi?'여러 개 선택 가능 · 직접 입력한 내용도 함께 반영해요':'칩은 답변의 출발점이에요. 선택 후 다음 질문에서 구체화합니다.';
-  $('previous-answer').hidden=!def||!answerText(def.id);$('previous-answer').textContent=def&&answerText(def.id)?`이전에 정한 내용: ${answerText(def.id)}`:'';
+  $('previous-answer').hidden=!def||!answerText(def.id);$('clear-answer').hidden=!def||!answerText(def.id);$('clear-answer').disabled=busy;$('previous-answer').textContent=def&&answerText(def.id)?`이전에 정한 내용: ${answerText(def.id)}`:'';
   let options=def?.id==='grades'?gradeOptions():Planning.options(def?.id,state.answers);if(def?.id==='subjects')options=[...options,...state.extraSubjects];
   let lastGroup='';options.forEach(raw=>{const option=typeof raw==='string'?{label:raw,value:raw}:raw;if(option.group&&option.group!==lastGroup){const label=document.createElement('div');label.className='chip-group-label';label.textContent=option.group;$('chips').append(label);lastGroup=option.group;}const button=document.createElement('button');button.className='chip';button.textContent=option.label;button.disabled=busy;button.setAttribute('aria-pressed',String(selected.has(option.value)));button.onclick=()=>{if(option.value==='기타 · 직접 입력'){$('custom-wrap').hidden=false;$('custom-subject').focus();return;}if(def.multi){selected.has(option.value)?selected.delete(option.value):selected.add(option.value);button.setAttribute('aria-pressed',String(selected.has(option.value)));$('continue').disabled=!selected.size;}else accept(option.value);};$('chips').append(button);});
   $('send').disabled=busy;$('ai-refine').disabled=busy;$('new-chat').disabled=busy;
@@ -87,18 +87,34 @@ function scrollChat(){requestAnimationFrame(()=>{const container=$('chat-scroll'
 function panel(name){$('document-panel').hidden=name!=='document';$('settings-panel').hidden=name!=='settings';$('document-tab').setAttribute('aria-selected',String(name==='document'));$('settings-tab').setAttribute('aria-selected',String(name==='settings'));$('detail-panel').classList.add('mobile-open');}
 function keySettings(){panel('settings');$('api-fields').hidden=false;$('api-settings').setAttribute('aria-expanded','true');$('api-key').focus();}
 function updateConnection(){ $('key-badge').textContent=apiKey?'연결됨 ✓':'연결 안 됨 ›';$('mode-label').lastChild.textContent=apiKey?' Gemini 연결됨':' 기본 질문 모드';}
-async function requestAI(prompt,key=apiKey,chosenModel=model,maxTokens=16000){
-  controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),120000);
-  try{let response;for(let attempt=0;;attempt++){response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(chosenModel)}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:maxTokens}}),signal:controller.signal});if(![500,503].includes(response.status)||attempt>=3)break;await new Promise(r=>setTimeout(r,1500*(attempt+1)));}
-    if(!response.ok){const messages={400:'키 또는 모델 설정을 확인해 주세요.',401:'유효한 API 키를 입력해 주세요.',403:'키 권한이나 API 사용 권한을 확인해 주세요.',404:'이 모델을 찾을 수 없습니다. AI Studio의 모델 ID를 확인해 주세요.',500:'AI 서버에 일시적인 문제가 있어요. 잠시 후 다시 시도하거나 다른 모델을 선택해 주세요.',503:'선택한 모델이 지금 혼잡해요(자동으로 3번 재시도했어요). 잠시 후 다시 시도하거나 설정에서 다른 모델을 선택해 주세요.',429:'무료 사용량 또는 요청 한도에 도달했어요. 잠시 후 다시 시도하거나 AI Studio에서 한도를 확인해 주세요.'};throw new Error(messages[response.status]||'AI 서비스가 응답하지 않아요. 잠시 후 다시 시도해 주세요.');}
+const noThinking=new Set();
+function thinkingFor(m){if(noThinking.has(m))return null;if(/gemini-3/.test(m))return {thinkingLevel:'low'};if(/2\.5-flash/.test(m))return {thinkingBudget:0};return null;}
+async function requestAI(prompt,key=apiKey,chosenModel=model,maxTokens=16000,schema=null){
+  const ctl=new AbortController();const timeout=setTimeout(()=>ctl.abort(),90000);
+  const levels=[{think:true,schema:true},{think:false,schema:true},{think:false,schema:false}];let li=0;
+  try{let response;for(let attempt=0;;attempt++){
+      const level=levels[li];const cfg={maxOutputTokens:maxTokens};const think=level.think&&thinkingFor(chosenModel);if(think)cfg.thinkingConfig=think;if(schema){cfg.responseMimeType='application/json';if(level.schema)cfg.responseSchema=schema;}
+      response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(chosenModel)}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:cfg}),signal:ctl.signal});
+      if(response.status===400&&li<levels.length-1){if(think)noThinking.add(chosenModel);li++;if(!levels[li].think||levels[li].schema!==level.schema||true)continue;}
+      if(![500,503].includes(response.status)||attempt>=3)break;await new Promise(r=>setTimeout(r,1000*(attempt+1)));}
+    if(!response.ok){const messages={400:'키 또는 모델 설정을 확인해 주세요.',401:'유효한 API 키를 입력해 주세요.',403:'키 권한이나 API 사용 권한을 확인해 주세요.',404:'이 모델을 찾을 수 없습니다. 설정에서 다른 모델을 선택해 주세요.',500:'AI 서버에 일시적인 문제가 있어요. 잠시 후 다시 시도하거나 다른 모델을 선택해 주세요.',503:'선택한 모델이 지금 혼잡해요(자동으로 재시도했어요). 잠시 후 다시 시도하거나 설정에서 다른 모델을 선택해 주세요.',429:'무료 사용량 또는 요청 한도에 도달했어요. 잠시 후 다시 시도하거나 AI Studio에서 한도를 확인해 주세요.'};throw new Error(messages[response.status]||'AI 서비스가 응답하지 않아요. 잠시 후 다시 시도해 주세요.');}
     const data=await response.json();if(data.candidates?.[0]?.finishReason==='MAX_TOKENS')throw new Error('응답이 길어 중간에 멈췄어요. 기존 문서는 유지됩니다. 자료 수나 범위를 줄여 다시 요청해 주세요.');const result=data.candidates?.[0]?.content?.parts?.filter(p=>!p.thought).map(p=>p.text||'').join('');if(!result)throw new Error('AI가 답변을 생성하지 못했어요. 입력을 바꿔 다시 시도해 주세요.');return redact(result);
-  }catch(error){if(error.name==='AbortError')throw new Error('응답 대기 시간이 지났어요. 내용은 보관되어 있으니 다시 시도해 주세요.');if(error instanceof TypeError)throw new Error('네트워크 연결을 확인해 주세요. 작성 중인 내용은 유지됩니다.');throw error;}finally{clearTimeout(timeout);controller=null;}
+  }catch(error){if(error.name==='AbortError')throw new Error('응답 대기 시간이 지났어요. 내용은 보관되어 있으니 다시 시도해 주세요.');if(error instanceof TypeError)throw new Error('네트워크 연결을 확인해 주세요. 작성 중인 내용은 유지됩니다.');throw error;}finally{clearTimeout(timeout);}
 }
+function parseJSON(text){const t=text.trim().replace(/^```(?:json)?\s*/i,'').replace(/```\s*$/,'');try{return JSON.parse(t);}catch{const a=t.indexOf('{'),b=t.lastIndexOf('}');if(a>=0&&b>a)return JSON.parse(t.slice(a,b+1));throw new Error('AI 응답 형식을 읽지 못했어요. 다시 시도해 주세요.');}}
+const SECTION_SCHEMA={type:'OBJECT',properties:{sections:{type:'ARRAY',items:{type:'OBJECT',properties:{n:{type:'INTEGER'},markdown:{type:'STRING'}},required:['n','markdown']}}},required:['sections']};
+const COACH_SCHEMA={type:'OBJECT',properties:{answer:{type:'STRING'},choices:{type:'ARRAY',items:{type:'STRING'}}},required:['answer','choices']};
+const DRAFT_SCHEMA={type:'OBJECT',properties:{draft:{type:'STRING'}},required:['draft']};
 async function refine(instruction){
   if(!apiKey){keySettings();$('key-status').textContent='상세 PRD 생성에는 개인 API 키가 필요해요. 답변 기반 초안은 키 없이 다운로드할 수 있어요.';return;}
-  if(busy)return;busy=true;render();$('chat-notice').textContent='자료 원문·화면 동작·피드백·완료 기준을 구체화하고 있어요…';
-  try{const result=await requestAI(Planning.prompt(state.answers,markdown(),instruction));
-    if(![1,2,3,4,5,6,7].every(n=>new RegExp(`^##\\s*${n}[.．]`,'m').test(result)))throw new Error('상세 문서 형식이 완성되지 않았어요. 기존 문서를 보존했으니 다시 생성해 주세요.');
+  if(busy)return;busy=true;render();$('chat-notice').textContent='세 부분으로 나누어 동시에 작성하고 있어요…';
+  try{const current=state.draft||'';const got={};let done=0;
+    const run=async(nums,context='')=>{const json=parseJSON(await requestAI(Planning.promptPart(state.answers,current,instruction,nums,context),apiKey,model,8192,SECTION_SCHEMA));(json.sections||[]).forEach(x=>{if(nums.includes(Number(x.n))&&x.markdown)got[Number(x.n)]=String(x.markdown).trim();});done++;$('chat-notice').textContent=`상세 PRD 작성 중… (${done}/4)`;};
+    await Promise.all(Planning.prdParts.map(nums=>run(nums)));
+    await run([7],got[3]||'');
+    const titles={1:'기본 수업 정보',2:'사용 환경 및 접속 방식',3:'활동 구성·실행 방식과 진행 규칙',4:'핵심 구현 기능: 교사 화면과 학생 화면',5:'디자인 및 화면 스타일',6:'운영 조건·추가 고려사항',7:'완료 기준'};
+    const missing=[1,2,3,4,5,6,7].filter(n=>!got[n]);if(missing.length)throw new Error(`일부 섹션(${missing.join(', ')}번)이 만들어지지 않았어요. 기존 문서를 보존했으니 다시 생성해 주세요.`);
+    const result=[1,2,3,4,5,6,7].map(n=>new RegExp(`^##\\s*${n}[.．]`).test(got[n])?got[n]:`## ${n}. ${titles[n]}\n${got[n]}`).join('\n\n');
     state.previousDraft=markdown();state.draft=result;state.draftStale=false;
     addMessage('assistant','상세 PRD 초안을 작성했어요. 오른쪽 문서의 [제안·교사 검토 필요] 부분과 자료·정답 연결을 확인해 주세요. 바꾸고 싶은 점을 여기서 이야기하면 문서를 수정할 수 있어요.');persist();$('chat-notice').textContent='';
   }catch(error){$('chat-notice').textContent=error.message;}finally{busy=false;render();scrollChat();}
@@ -106,7 +122,8 @@ async function refine(instruction){
 async function coach(text,proposal=false){
   if(!apiKey){keySettings();$('key-status').textContent='AI와 함께 구체화하려면 개인 API 키를 연결해 주세요.';return false;}
   if(busy)return false;busy=true;if(!proposal)addMessage('user',text);persist();render();$('chat-notice').textContent=proposal?'현재 활동에 맞는 답변 초안을 제안하고 있어요…':'선택한 과목과 활동을 바탕으로 함께 생각하고 있어요…';
-  try{const result=await requestAI(Planning.coachPrompt(state.answers,definitions[state.step]?.id,text,proposal),apiKey,model,6000);
+  try{const json=parseJSON(await requestAI(Planning.coachPrompt(state.answers,definitions[state.step]?.id,text,proposal),apiKey,model,proposal?1200:1800,proposal?DRAFT_SCHEMA:COACH_SCHEMA));
+    const result=proposal?String(json.draft||'').trim():String(json.answer||'').trim()+((json.choices||[]).length?'\n\n[선택지]\n'+json.choices.map(c=>'- '+String(c).trim()).join('\n'):'');if(!result)throw new Error('AI가 답변을 생성하지 못했어요. 다시 시도해 주세요.');
     addMessage('assistant',result);if(proposal){$('chat-input').value=result;chatMode='answer';setChatMode('answer');$('chat-notice').textContent='입력창의 AI 제안을 검토·수정한 뒤 전송하면 답변으로 반영됩니다.';}else $('chat-notice').textContent='마음에 드는 선택지를 누르거나, 직접 입력해 전송하세요.';
     persist();return true;
   }catch(error){$('chat-notice').textContent=error.message;return false;}finally{busy=false;render();scrollChat();}
@@ -152,3 +169,5 @@ $('generate-final').onclick=()=>refine('확정 답변을 바탕으로 개발 가
 $('ask-ai').onclick=async()=>{if(busy)return;const text=$('chat-input').value.trim();if(!text){$('chat-notice').textContent='AI에게 물어볼 내용을 입력창에 적어 주세요.';$('chat-input').focus();return;}$('chat-notice').textContent='';if(/AIza[\w-]{20,}/.test(text)||(apiKey&&text.includes(apiKey))){$('chat-input').value='';keySettings();$('key-status').textContent='API 키는 대화가 아닌 이 입력란에 넣어 주세요.';return;}if(await coach(text))$('chat-input').value='';};
 $('clear-chat').onclick=()=>{if(busy)return;state.messages=[];persist();render();toast('대화를 지웠어요. 기획 답변은 그대로 유지돼요.');};
 $('restore-draft').onclick=()=>{if(busy)return;const current=markdown();state.draft=state.previousDraft;state.previousDraft=current;state.draftStale=true;persist();render();toast('이전 문서를 복원했어요. 최신 답변과 맞는지 확인해 주세요.');};
+
+$('clear-answer').onclick=()=>{const def=definitions[state.step];if(!def||busy)return;delete state.answers[def.id];if(def.id==='school')delete state.answers.grades;if(def.id==='subjects'){delete state.answers.activity;delete state.answers.method;}if(def.id==='activity')delete state.answers.method;if(def.id==='teacher')delete state.answers.teacherView;selected=new Set();state.draftStale=!!state.draft;$('chat-input').value='';$('chat-notice').textContent='';persist();render();toast('이전에 정한 내용을 지웠어요. 다시 선택하거나 입력해 주세요.');};
