@@ -9,6 +9,22 @@ function persist(){try{localStorage.setItem(STORAGE,JSON.stringify(state));$('sa
 function toast(message){$('toast').textContent=message;$('toast').style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').style.display='none',2800);}
 function redact(text){return String(text).replace(/AIza[\w-]{20,}/g,'[API 키 삭제됨]').split(apiKey || '\u0000').join(apiKey?'[API 키 삭제됨]':'\u0000');}
 function addMessage(role,text){state.messages.push({role,text:redact(text),kind:'conversation'});}
+function inlineMd(parent,text){text.split(/<br\s*\/?>/i).forEach((part,i)=>{if(i)parent.append(document.createElement('br'));part.split(/(\*\*[^*]+\*\*|`[^`]+`)/).forEach(t=>{if(!t)return;if(t.startsWith('**')&&t.endsWith('**')&&t.length>4){const b=document.createElement('strong');b.textContent=t.slice(2,-2);parent.append(b);}else if(t.startsWith('`')&&t.endsWith('`')&&t.length>2){const c=document.createElement('code');c.textContent=t.slice(1,-1);parent.append(c);}else parent.append(document.createTextNode(t));});});}
+function renderMd(text){
+  const box=document.createElement('div');box.className='md';const lines=text.replace(/\r/g,'').split('\n');let i=0,list=null,para=null;
+  const cells=l=>l.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+  const flush=()=>{list=null;para=null;};
+  while(i<lines.length){const line=lines[i],t=line.trim();
+    if(!t){flush();i++;continue;}
+    if(/^\|.*\|$/.test(t)&&i+1<lines.length&&/^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$/.test(lines[i+1].trim())){flush();const wrap=document.createElement('div');wrap.className='md-table';const table=document.createElement('table');const head=cells(t);const thead=document.createElement('thead'),hr=document.createElement('tr');head.forEach(h=>{const th=document.createElement('th');inlineMd(th,h);hr.append(th);});thead.append(hr);const tbody=document.createElement('tbody');i+=2;while(i<lines.length&&/^\|.*\|$/.test(lines[i].trim())){const tr=document.createElement('tr');cells(lines[i]).forEach(c=>{const td=document.createElement('td');inlineMd(td,c);tr.append(td);});tbody.append(tr);i++;}table.append(thead,tbody);wrap.append(table);box.append(wrap);continue;}
+    if(/^-{3,}$|^\*{3,}$/.test(t)){flush();box.append(document.createElement('hr'));i++;continue;}
+    const h=t.match(/^#{1,6}\s+(.*)$/);if(h){flush();const e=document.createElement('p');e.className='md-heading';inlineMd(e,h[1]);box.append(e);i++;continue;}
+    const li=t.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/);if(li){para=null;if(!list){list=document.createElement('ul');box.append(list);}const item=document.createElement('li');inlineMd(item,li[1]);list.append(item);i++;continue;}
+    list=null;if(!para){para=document.createElement('p');box.append(para);}else para.append(document.createElement('br'));inlineMd(para,t);i++;}
+  return box;
+}
+function splitChoices(text){const m=text.match(/\n*\[선택지\]\s*\n([\s\S]*)$/);if(!m)return{body:text,choices:[]};return{body:text.slice(0,m.index).trim(),choices:m[1].split('\n').map(l=>l.trim().replace(/^(?:[-*•]|\d+[.)])\s*/,'')).filter(Boolean).slice(0,6)};}
+
 function gradeOptions(){return Array.from({length:state.answers.school==='초등학교'?6:3},(_,i)=>`${i+1}학년`);}
 function answerText(id){const value=state.answers[id];return Array.isArray(value)?value.join(', '):value||'';}
 function sections(){return Planning.sections(state.answers);}
@@ -35,7 +51,7 @@ function renderDocument(){
 }
 function goStep(index){if(busy)return;state.step=index;selected=new Set(Array.isArray(state.answers[definitions[index]?.id])?state.answers[definitions[index].id]:[]);persist();render();$('detail-panel').classList.remove('mobile-open');scrollChat();}
 function render(){
-  const messages=$('messages');messages.replaceChildren();state.messages.filter(m=>m.role!=='user'||m.kind==='conversation').forEach(m=>{const div=document.createElement('div');div.className=`message ${m.role==='user'?'user':'assistant'}`;const label=document.createElement('span');label.className='message-label';label.textContent='Oni 코치';if(m.role!=='user')div.append(label);div.append(document.createTextNode(m.text));messages.append(div);});
+    const messages=$('messages');messages.replaceChildren();let shown=0;state.messages.forEach((m,index)=>{if(m.role==='user'&&m.kind!=='conversation')return;shown++;const div=document.createElement('div');div.className=`message ${m.role==='user'?'user':'assistant'}`;const del=document.createElement('button');del.type='button';del.className='message-delete';del.textContent='삭제';del.setAttribute('aria-label','이 메시지 삭제');del.disabled=busy;del.onclick=()=>{state.messages.splice(index,1);persist();render();};if(m.role!=='user'){const label=document.createElement('span');label.className='message-label';label.textContent='Oni 코치';div.append(label);const {body,choices}=splitChoices(m.text);div.append(renderMd(body));if(choices.length){const row=document.createElement('div');row.className='md-choices';choices.forEach(c=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=c;b.disabled=busy;b.onclick=()=>{$('chat-input').value=c;$('chat-input').focus();$('chat-notice').textContent='선택한 내용을 입력창에 넣었어요. 고쳐 쓴 뒤 전송하면 답변으로 반영됩니다.';};row.append(b);});div.append(row);}}else div.append(document.createTextNode(m.text));div.append(del);messages.append(div);});$('clear-chat').hidden=!shown;$('clear-chat').disabled=busy;
   $('steps').replaceChildren();
   Planning.groups.forEach((group,g)=>{const wrapper=document.createElement('details');wrapper.open=definitions[state.step]?.group===g;const summary=document.createElement('summary');const members=Planning.visibleSteps(state.answers).filter(d=>d.group===g);summary.textContent=`${g+1}. ${group}  ${members.filter(d=>state.answers[d.id]).length}/${members.length}`;wrapper.append(summary);members.forEach(def=>{const i=definitions.indexOf(def);const button=document.createElement('button');button.className=i===state.step?'current':'';button.disabled=busy;const dot=document.createElement('span');dot.className='step-dot';dot.textContent=state.answers[def.id]?'✓':'·';button.append(dot,document.createTextNode(def.title));button.onclick=()=>goStep(i);wrapper.append(button);});$('steps').append(wrapper);});
   const def=definitions[state.step];$('chips').replaceChildren();$('custom-wrap').hidden=true;
@@ -91,11 +107,11 @@ async function coach(text,proposal=false){
   if(!apiKey){keySettings();$('key-status').textContent='AI와 함께 구체화하려면 개인 API 키를 연결해 주세요.';return false;}
   if(busy)return false;busy=true;if(!proposal)addMessage('user',text);persist();render();$('chat-notice').textContent=proposal?'현재 활동에 맞는 답변 초안을 제안하고 있어요…':'선택한 과목과 활동을 바탕으로 함께 생각하고 있어요…';
   try{const result=await requestAI(Planning.coachPrompt(state.answers,definitions[state.step]?.id,text,proposal),apiKey,model,6000);
-    addMessage('assistant',result);if(proposal){$('chat-input').value=result;chatMode='answer';setChatMode('answer');$('chat-notice').textContent='입력창의 AI 제안을 검토·수정한 뒤 전송하면 답변으로 반영됩니다.';}else $('chat-notice').textContent='답변을 정했다면 “답변 작성”으로 바꾸어 입력하세요.';
+    addMessage('assistant',result);if(proposal){$('chat-input').value=result;chatMode='answer';setChatMode('answer');$('chat-notice').textContent='입력창의 AI 제안을 검토·수정한 뒤 전송하면 답변으로 반영됩니다.';}else $('chat-notice').textContent='마음에 드는 선택지를 누르거나, 직접 입력해 전송하세요.';
     persist();return true;
   }catch(error){$('chat-notice').textContent=error.message;return false;}finally{busy=false;render();scrollChat();}
 }
-function setChatMode(mode){chatMode=mode;$('answer-mode').setAttribute('aria-pressed',String(mode==='answer'));$('coach-mode').setAttribute('aria-pressed',String(mode==='coach'));$('composer-label').textContent=mode==='coach'?'코치와 편하게 의논하세요':'직접 이야기해 주세요';if(!busy)render();}
+function setChatMode(mode){return;chatMode=mode;$('answer-mode').setAttribute('aria-pressed',String(mode==='answer'));$('coach-mode').setAttribute('aria-pressed',String(mode==='coach'));$('composer-label').textContent=mode==='coach'?'코치와 편하게 의논하세요':'직접 이야기해 주세요';if(!busy)render();}
 function processText(text){const def=definitions[state.step];if(!def){if(apiKey){addMessage('user',text);persist();refine(text);}else{addMessage('user',text);state.draft=markdown()+'\n\n## 추가 요청\n'+text;addMessage('assistant','추가 요청을 기획서에 기록했어요. AI와 대화하며 보완하려면 오른쪽 설정에서 API 키를 연결해 주세요.');persist();render();scrollChat();}return;}
   if(def.id==='school'){const match=[['초등','초등학교'],['중학','중학교'],['고등','고등학교']].filter(([word])=>text.includes(word));if(match.length!==1){$('chat-notice').textContent='초등학교·중학교·고등학교 중 하나를 먼저 선택해 주세요. 학년은 다음 단계에서 여러 개 선택할 수 있어요.';return false;}const grades=[...text.matchAll(/[1-6]/g)].map(m=>`${m[0]}학년`).filter(g=>match[0][1]==='초등학교'||Number(g[0])<=3);accept(match[0][1]);if(grades.length){state.answers.grades=[...new Set(grades)];selected=new Set(state.answers.grades);persist();render();}return;}
   if(def.id==='grades'){const numbers=[...text.matchAll(/[1-6]/g)].map(m=>`${m[0]}학년`);const range=text.match(/([1-6])\s*(?:~|-|부터)\s*([1-6])/);if(range)for(let n=Number(range[1]);n<=Number(range[2]);n++)numbers.push(`${n}학년`);const valid=[...new Set(numbers)].filter(g=>gradeOptions().includes(g));if(!valid.length){$('chat-notice').textContent='해당 학교급의 학년을 선택하거나 숫자로 입력해 주세요. 예: 1, 2학년';return false;}accept(valid);return;}
@@ -133,5 +149,6 @@ render();
 $('skip-step').onclick=()=>accept('미정 · 추가 구체화 필요');
 $('ai-suggest').onclick=()=>coach($('chat-input').value.trim()||'지금 질문에 대한 구체적인 답변을 제안해 주세요.',true);
 $('generate-final').onclick=()=>refine('확정 답변을 바탕으로 개발 가능한 상세 PRD 초안을 작성하세요. 부족한 콘텐츠는 제안으로 구분하여 실제 원문과 규칙까지 작성하세요.');
-$('answer-mode').onclick=()=>setChatMode('answer');$('coach-mode').onclick=()=>setChatMode('coach');
+$('ask-ai').onclick=async()=>{if(busy)return;const text=$('chat-input').value.trim();if(!text){$('chat-notice').textContent='AI에게 물어볼 내용을 입력창에 적어 주세요.';$('chat-input').focus();return;}$('chat-notice').textContent='';if(/AIza[\w-]{20,}/.test(text)||(apiKey&&text.includes(apiKey))){$('chat-input').value='';keySettings();$('key-status').textContent='API 키는 대화가 아닌 이 입력란에 넣어 주세요.';return;}if(await coach(text))$('chat-input').value='';};
+$('clear-chat').onclick=()=>{if(busy)return;state.messages=[];persist();render();toast('대화를 지웠어요. 기획 답변은 그대로 유지돼요.');};
 $('restore-draft').onclick=()=>{if(busy)return;const current=markdown();state.draft=state.previousDraft;state.previousDraft=current;state.draftStale=true;persist();render();toast('이전 문서를 복원했어요. 최신 답변과 맞는지 확인해 주세요.');};
