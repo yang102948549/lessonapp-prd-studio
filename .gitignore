@@ -1,0 +1,8 @@
+# GitHub Pages 배포 파일만 추적합니다. 기획 문서·이미지·로컬 테스트는 로컬에 유지합니다.
+*
+!/.gitignore
+!/index.html
+!/styles.css
+!/app.js
+!/planning.js
+!/.nojekyll
