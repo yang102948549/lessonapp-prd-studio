@@ -14,6 +14,7 @@
   <div class="sidebar-label">워크스페이스</div>
   <button class="nav-button active" id="current-chat">▤ <span>나의 수업 웹앱</span></button>
   <div class="sidebar-label steps-label">기획 순서</div><nav id="steps" aria-label="기획 단계"></nav>
+  <footer class="site-footer">© 2026 Onischool by Oniaby</footer>
 </aside>
 <main>
   <header class="topbar"><div><strong>나의 수업 웹앱</strong><span class="breadcrumb"> / PRD 만들기</span></div><div class="top-actions"><span id="save-status">이 기기에 자동 저장</span><button id="panel-toggle" class="icon-button" aria-label="문서와 설정 열기">☷</button></div></header>
@@ -32,7 +33,6 @@
       <section id="settings-panel" role="tabpanel" aria-labelledby="settings-tab" hidden><h2>설정</h2><p class="muted">나에게 맞는 작업 환경을 설정하세요.</p><button id="api-settings" class="setting-row" aria-expanded="false"><span><b>API KEY</b><small>개인 Gemini API 키 연결</small></span><span id="key-badge">연결 안 됨 ›</span></button><div id="api-fields" hidden><label for="api-key">Gemini API KEY</label><div class="inline-input"><input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="발급받은 API 키를 붙여넣으세요"><button id="toggle-key" aria-label="API 키 표시">보기</button></div><label for="model">사용할 모델</label><select id="model" disabled><option value="gemini-3.8-flash">연결 후 선택할 수 있어요</option></select><p class="field-help">연결이 확인되면 이 키로 사용할 수 있는 모델이 목록에 나타납니다.</p><div class="key-actions"><button id="connect-key" class="primary">연결 확인</button><button id="remove-key">키 삭제</button></div><p id="key-status" role="status"></p><div class="guide"><h3>API 키가 처음이신가요?</h3><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio에서 키 발급받기 ↗</a><ol><li>Google 계정으로 로그인하고 필요한 약관에 동의하세요.</li><li>API Keys에서 <b>API 키 만들기(Create API key)</b>를 선택하세요. 이미 생성된 키가 있으면 사용할 수 있어요.</li><li>프로젝트를 선택하거나 새로 만든 뒤 키를 복사하세요.</li><li>위 입력란에 붙여넣고 <b>연결 확인</b>을 누르세요.</li></ol><p>프로젝트가 보이지 않으면 AI Studio의 Projects에서 가져오세요. 학교 계정은 관리자 권한에 따라 발급이 제한될 수 있어요.</p></div></div></section>
     </aside>
   </div>
-<footer class="site-footer">© 2026 Onischool by Oniaby. All rights reserved.</footer>
 </main>
 <dialog id="reset-dialog"><h2>새 기획을 시작할까요?</h2><p>현재 대화와 기획서가 초기화됩니다.<br>필요한 문서는 먼저 다운로드해 주세요.</p><div><button id="cancel-reset">취소</button><button id="confirm-reset" class="primary">새로 시작</button></div></dialog>
 <div id="toast" role="status"></div>

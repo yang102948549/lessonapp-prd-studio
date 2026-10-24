@@ -36,4 +36,5 @@
 .chip{line-height:1.55;text-align:left}.question-card h2{line-height:1.65}.composer textarea{font-size:18px;min-height:70px}.composer label{font-size:16px}.document-actions button{font-size:14px}.detail-panel{min-width:350px}.sidebar-bottom{line-height:1.6}#steps .step-dot{flex-shrink:0;width:21px;height:21px}.conversation{padding-top:32px}.intro{margin-bottom:25px}.composer-area{flex-shrink:0}@media(max-width:720px){.detail-panel{min-width:0}.composer textarea{font-size:18px}.composer-area{padding-bottom:10px}.question-card h2{font-size:21px}}
 
 #model{width:100%;border:1px solid #c9c9c5;padding:11px 12px;background:var(--bg);color:var(--fg);border-radius:8px;font-size:16px}body.dark #model{border-color:#555}
-.site-footer{flex-shrink:0;text-align:center;font-size:12px;color:var(--muted);padding:8px 16px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--bg)}
+.site-footer{margin-top:auto;padding:14px 10px 0;font-size:12px;color:var(--muted);white-space:nowrap}
+@media(max-width:920px){.site-footer{display:none}}
