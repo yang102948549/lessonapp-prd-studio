@@ -1,5 +1,5 @@
 const $ = id => document.getElementById(id);
-const STORAGE = 'lessonapp.workspace.v1', PROJECTS_KEY = 'oni.projects.v1', DEFAULT_NAME = '나의 수업 웹앱';
+const STORAGE = 'lessonapp.workspace.v1', PROJECTS_KEY = 'oni.projects.v1', DEFAULT_NAME = '나의 수업 웹앱', MAX_PROJECTS = 20, QUOTA_BYTES = 5*1024*1024;
 const definitions = Planning.steps;
 const fresh = () => ({version:2,step:0,answers:{},messages:[],draft:'',draftStale:false,previousDraft:'',extraSubjects:[]});
 let state = fresh(), projects = [], currentId = '';
@@ -60,10 +60,18 @@ function renderDocument(){
 function goStep(index){if(busy)return;state.step=index;selected=new Set(Array.isArray(state.answers[definitions[index]?.id])?state.answers[definitions[index].id]:[]);persist();render();$('detail-panel').classList.remove('mobile-open');scrollChat();}
 function resetView(){selected=new Set(Array.isArray(state.answers[definitions[state.step]?.id])?state.answers[definitions[state.step].id]:[]);editing=false;$('document-editor').hidden=true;$('prd-preview').hidden=false;$('edit-doc').textContent='직접 편집';$('chat-input').value='';$('chat-notice').textContent='';$('detail-panel').classList.remove('mobile-open');}
 function switchProject(id){if(busy||id===currentId)return;persist();currentId=id;state=loadState(currentProject().state);resetView();persist();render();scrollChat();}
-function newProject(){if(busy)return;persist();const n=projects.length+1;let name=`새 프로젝트 ${n}`;while(projects.some(p=>p.name===name))name=`새 프로젝트 ${projects.length+Math.floor(Math.random()*90+10)}`;const p={id:uid(),name,updated:Date.now(),state:fresh()};projects.push(p);currentId=p.id;state=p.state;resetView();persist();render();toast('새 프로젝트를 만들었어요.');}
+function newProject(){if(busy)return;if(projects.length>=MAX_PROJECTS){toast(`프로젝트는 최대 ${MAX_PROJECTS}개까지 저장할 수 있어요. 안 쓰는 프로젝트를 삭제하거나 내보낸 뒤 지워 주세요.`);return;}persist();const n=projects.length+1;let name=`새 프로젝트 ${n}`;while(projects.some(p=>p.name===name))name=`새 프로젝트 ${projects.length+Math.floor(Math.random()*90+10)}`;const p={id:uid(),name,updated:Date.now(),state:fresh()};projects.push(p);currentId=p.id;state=p.state;resetView();persist();render();toast('새 프로젝트를 만들었어요.');}
 function renameProject(id=currentId){const p=projects.find(x=>x.id===id);const name=(window.prompt('프로젝트 이름',p.name)||'').trim().slice(0,40);if(!name)return;p.name=name;persist();render();}
 function deleteProject(id){if(busy)return;const p=projects.find(x=>x.id===id);if(!window.confirm(`“${p.name}” 프로젝트를 삭제할까요? 대화와 기획서가 모두 사라져요.`))return;if(projects.length===1){p.state=fresh();p.name=DEFAULT_NAME;state=p.state;resetView();persist();render();return;}const idx=projects.indexOf(p);projects.splice(idx,1);deletedIds.add(id);if(id===currentId){currentId=projects[Math.min(idx,projects.length-1)].id;state=loadState(currentProject().state);resetView();}persist();render();toast('프로젝트를 삭제했어요.');}
-function renderProjects(){
+function storageUsage(){try{const raw=localStorage.getItem(PROJECTS_KEY)||'';return raw.length*2;}catch{return 0;}}
+function renderStorage(){const used=storageUsage();const pct=Math.min(100,Math.round(used/QUOTA_BYTES*100));const mb=(used/1048576).toFixed(2);
+  const count=`${projects.length}/${MAX_PROJECTS}개`;
+  $('project-count').textContent=`${count} · 이 브라우저에만 저장`;
+  $('storage-summary').textContent=`프로젝트 ${count} · 저장 공간 약 ${mb}MB 사용 (브라우저 한도 약 5MB 중 ${pct}%)`;
+  $('storage-bar').style.width=pct+'%';
+  $('storage-warn').textContent=projects.length>=MAX_PROJECTS?'프로젝트가 가득 찼어요. 새로 만들려면 하나를 삭제해 주세요.':pct>=80?'저장 공간이 거의 찼어요. 내보내기로 파일에 보관한 뒤 오래된 프로젝트를 삭제해 주세요.':'';
+}
+function renderProjects(){renderStorage();
   const list=$('project-list');list.replaceChildren();
   projects.forEach(p=>{const row=document.createElement('div');row.className='project-row'+(p.id===currentId?' active':'');
     const open=document.createElement('button');open.type='button';open.className='project-open';open.textContent=p.name;open.title=p.name;open.disabled=busy;if(p.id===currentId)open.setAttribute('aria-current','true');open.onclick=()=>switchProject(p.id);
@@ -197,6 +205,8 @@ $('clear-answer').onclick=()=>{const def=definitions[state.step];if(!def||busy)r
 
 $('export-projects').onclick=()=>{persist();const blob=new Blob([JSON.stringify({app:'oni-studio',version:1,items:projects},null,1)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='oni-studio-projects.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 $('import-projects').onclick=()=>$('import-file').click();
-$('import-file').onchange=async()=>{const file=$('import-file').files[0];$('import-file').value='';if(!file)return;try{const data=JSON.parse(await file.text());if(!Array.isArray(data.items))throw 0;persist();let count=0;data.items.forEach(p=>{if(p&&p.state&&Array.isArray(p.state.messages||[])){projects.push({id:uid(),name:String(p.name||DEFAULT_NAME).slice(0,40),updated:Date.now(),state:loadState(p.state)});count++;}});if(!count)throw 0;persist();render();toast(`${count}개 프로젝트를 불러왔어요.`);}catch{toast('프로젝트 파일을 읽지 못했어요.');}};
+$('import-file').onchange=async()=>{const file=$('import-file').files[0];$('import-file').value='';if(!file)return;try{const data=JSON.parse(await file.text());if(!Array.isArray(data.items))throw 0;persist();let count=0;data.items.forEach(p=>{if(projects.length<MAX_PROJECTS&&p&&p.state&&Array.isArray(p.state.messages||[])){projects.push({id:uid(),name:String(p.name||DEFAULT_NAME).slice(0,40),updated:Date.now(),state:loadState(p.state)});count++;}});if(!count)throw 0;persist();render();toast(`${count}개 프로젝트를 불러왔어요.`);}catch{toast('프로젝트 파일을 읽지 못했어요.');}};
 
 window.addEventListener('storage',e=>{if(e.key===PROJECTS_KEY&&!busy){mergeStored();renderProjects();}});
+
+$('project-count').onclick=()=>panel('settings');

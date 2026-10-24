@@ -55,3 +55,9 @@
 @media(max-width:1150px){.icon-button{display:inline-block}}
 .backup-row{align-items:flex-start}.backup-buttons{display:flex;gap:6px;flex-shrink:0}.backup-buttons button{font-size:13px;padding:7px 10px}
 @media(max-width:920px){.project-list{display:none}}
+
+.project-count{display:block;width:100%;text-align:left;background:transparent;border:0;padding:6px 12px;font-size:12px;color:var(--muted)}
+.storage-info{padding:18px 0;border-bottom:1px solid var(--border);font-size:14px;line-height:1.8;color:var(--muted)}.storage-info h3{font-size:17px;margin:0 0 10px;color:var(--fg)}.storage-info p{margin:0 0 8px}.storage-info ul{margin:0 0 8px;padding-left:18px}.storage-info b{color:var(--fg)}
+.storage-track{height:5px;border-radius:5px;background:var(--border);margin:6px 0 10px;overflow:hidden}.storage-track span{display:block;height:100%;width:0;background:#718b7c}
+.storage-warn{color:#9b6026}.storage-warn:empty{display:none}
+@media(max-width:920px){.project-count{display:none}}
