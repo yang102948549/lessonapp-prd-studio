@@ -88,7 +88,7 @@ function panel(name){$('document-panel').hidden=name!=='document';$('settings-pa
 function keySettings(){panel('settings');$('api-fields').hidden=false;$('api-settings').setAttribute('aria-expanded','true');$('api-key').focus();}
 function updateConnection(){ $('key-badge').textContent=apiKey?'연결됨 ✓':'연결 안 됨 ›';$('mode-label').lastChild.textContent=apiKey?' Gemini 연결됨':' 기본 질문 모드';}
 const noThinking=new Set();
-function thinkingFor(m){if(noThinking.has(m))return null;if(/gemini-3/.test(m))return {thinkingLevel:'low'};if(/2\.5-flash/.test(m))return {thinkingBudget:0};return null;}
+function thinkingFor(m){if(noThinking.has(m))return null;if(/gemini-3/.test(m))return {thinkingLevel:'minimal'};if(/2\.5-flash/.test(m))return {thinkingBudget:0};return null;}
 async function requestAI(prompt,key=apiKey,chosenModel=model,maxTokens=16000,schema=null){
   const ctl=new AbortController();const timeout=setTimeout(()=>ctl.abort(),90000);
   const levels=[{think:true,schema:true},{think:false,schema:true},{think:false,schema:false}];let li=0;
