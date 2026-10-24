@@ -106,7 +106,7 @@ function render(){
 }
 function accept(value){const def=definitions[state.step];if(!def)return;
   const changed=JSON.stringify(state.answers[def.id])!==JSON.stringify(value);
-  if(def.id==='school'&&changed)delete state.answers.grades;
+  if(def.id==='school'&&changed){delete state.answers.grades;const list=Planning.subjectsFor(value);if(Array.isArray(state.answers.subjects)){const keep=state.answers.subjects.filter(x=>list.includes(x)||state.extraSubjects.includes(x));if(keep.length!==state.answers.subjects.length){if(keep.length)state.answers.subjects=keep;else delete state.answers.subjects;delete state.answers.activity;delete state.answers.method;}}}
   if(def.id==='subjects'&&changed){delete state.answers.activity;delete state.answers.method;}
   if(def.id==='activity'&&changed)delete state.answers.method;
   if(def.id==='teacher'&&String(value).includes('별도 관리 화면 없음'))delete state.answers.teacherView;

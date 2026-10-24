@@ -20,10 +20,7 @@ globalThis.Planning = (() => {
     '보건':['정보 살펴보기','상황별 선택 연습하기','생활 습관 돌아보기','도움 요청 연습하기','대안 제안하기','실천 계획하기'],
     '제2외국어':['듣고 의미 찾기','정보 주고받기','상황에 맞게 표현하기','읽고 재구성하기','문화 비교하기','함께 쓰기']
   };
-  const langs=['일본어','중국어','독일어','프랑스어','스페인어','러시아어','아랍어','베트남어'];
-  const base2=activities['제2외국어'];delete activities['제2외국어'];
-  langs.forEach(n=>{activities['제2외국어 · '+n]=base2;});activities['제2외국어 · 기타']=base2;
-  const langName=s=>{const n=s.split(' · ')[1];return !n||n==='기타'?'배우는 외국어':n;};
+  const langName=()=>'해당 외국어';
   const langObjectives=n=>[`${n}로 듣고 핵심 정보를 파악하기`,`${n}로 인사·소개를 하고 묻고 답하기`,`상황에 맞는 ${n} 표현을 골라 말하거나 쓰기`,`${n}권 문화를 우리 문화와 비교해 설명하기`,`배운 ${n} 표현으로 짧은 대화나 글 완성하기`];
   const langStory=n=>[`${n}권 현지에서 길·가게·식당 등 일상 상황에 놓인 여행자가 되어 시작`,`${n}를 쓰는 또래와 온라인 교류하는 상황으로 시작`,`${n}권 문화 소개 자료를 보고 궁금한 점 찾기로 시작`];
   const langMaterials=n=>[`${n} 짧은 대화문과 음성·그림 카드`,`핵심 표현 카드와 빈칸 채우기 문장`,`${n}권 문화·생활 사진 및 설명 자료`];
@@ -106,7 +103,7 @@ globalThis.Planning = (() => {
     '진로':{mat:'직업·진로 카드',product:'진로 계획',tool:'관심 카드를 골라 나의 지도 만들기',evidence:'나의 관심과 강점',view:'카드와 계획표가 보이는 화면'},
     '보건':{mat:'건강 상황 사례',product:'실천 계획',tool:'상황별 행동 카드를 고르고 이유 쓰기',evidence:'건강 정보 근거',view:'상황 사례를 읽기 쉬운 화면'}
   };
-  const vocabFor=s=>s.startsWith('제2외국어')?{...vocab['영어'],mat:langName(s)+' 대화문·음성 자료',product:langName(s)+'로 말하거나 쓴 문장'}:vocab[s];
+  const vocabFor=s=>s.startsWith('제2외국어')?{...vocab['영어'],mat:'외국어 대화문·음성 자료',product:'외국어로 말하거나 쓴 문장'}:vocab[baseOf(s)];
   const generators={
     method:v=>[`${eul(v.mat)}탐색하며 ${eul(v.evidence)}표시하기`,`${eul(v.product)}먼저 만든 뒤 친구와 비교하기`,v.tool,`모둠이 ${eul(v.evidence)}모아 ${eul(v.product)}정리하기`],
     flow:v=>[`안내 → ${v.mat} 살펴보기 → ${v.product} 만들기 → 공유 → 돌아보기`,`질문 → ${v.evidence} 찾기 → ${v.product} 비교 → 수정 → 정리`],
@@ -125,7 +122,15 @@ globalThis.Planning = (() => {
   };
   const mixBase=new Set(['features','design','visual','exclusions','acceptance','output','teacherView','method','flow','rules','feedback']);
   function subjectGenerated(id,answers){const gen=generators[id];if(!gen)return[];const out=[];subjectList(answers).forEach(s=>{const v=vocabFor(s);if(v)gen(v).forEach(label=>out.push({label,group:s,value:label}));});return out;}
-  function bySubject(answers,kind,langFn,table){const out=[];subjectList(answers).forEach(s=>{const items=s.startsWith('제2외국어')?langFn(langName(s)):table[s];if(items)items.forEach(label=>out.push({label,group:s,value:label}));});return out;}
+  function bySubject(answers,kind,langFn,table){const out=[];subjectList(answers).forEach(s=>{const items=s.startsWith('제2외국어')?langFn(langName(s)):table[baseOf(s)];if(items)items.forEach(label=>out.push({label,group:s,value:label}));});return out;}
+  const subjectLists={
+    '초등학교':['국어','수학','사회','과학','영어','도덕','음악','미술','체육'],
+    '중학교':['국어','수학','사회','역사','도덕','과학','기술·가정','정보','영어','음악','미술','체육','제2외국어','한문','진로와 직업','보건'],
+    '고등학교':['국어','수학','영어','한국사','통합사회','통합과학','과학탐구실험','물리학','화학','생명과학','지구과학','정치와 법','경제','세계시민과 지리','윤리와 사상','음악','미술','체육','정보','기술·가정','제2외국어','한문','진로와 직업','보건']
+  };
+  const aliases={'한국사':'역사','통합사회':'사회','통합과학':'과학','과학탐구실험':'과학','물리학':'과학','화학':'과학','생명과학':'과학','지구과학':'과학','정치와 법':'사회','경제':'사회','세계시민과 지리':'사회','윤리와 사상':'도덕','한문':'국어','진로와 직업':'진로'};
+  const baseOf=s=>aliases[s]||s;
+  function subjectsFor(school){return subjectLists[school]||[...new Set(Object.values(subjectLists).flat())];}
   const common=['자료 탐색하기','비교하고 분류하기','함께 토론하기','함께 만들기','조건 바꾸기','문제 해결하기','복습하고 확인하기','활동 돌아보기'];
   const branches=[
     {id:'explore',label:'탐색·해석',match:/탐색|해석|읽고|사료|사례|관찰|분류|근거|듣고|특징|의미|규칙 발견|원인|정보 살펴/,methods:['자료를 자유롭게 탐색하고 핵심 내용 표시','자료를 차례로 열고 연결 관계 찾기','기준을 세워 카드를 분류하고 이유 설명','질문에 맞는 근거를 선택하고 설명하기'],materials:['짧은 글·그림·표를 묶은 자료 카드','서로 다른 입장의 발언·대화 자료','조건과 결과를 보여 주는 사례 자료','교사가 제공할 자료를 먼저 사용'],flow:['안내 → 자료 탐색 → 근거 선택 → 설명 → 공유','예상 → 자료 확인 → 분류·연결 → 이유 정리 → 돌아보기'],rules:['필수 자료를 모두 확인하면 다음 단계 열기','자료는 자유롭게 다시 보고 이전 선택 유지','선택 개수를 정하고 초과 선택 시 안내','자료 확인 여부와 관계없이 자유롭게 이동'],feedback:['근거가 부족하면 관련 자료를 다시 보도록 안내','맞은 연결은 유지하고 다른 부분만 수정','열린 해석은 자동 채점하지 않고 근거를 확인']},
@@ -170,9 +175,10 @@ globalThis.Planning = (() => {
     step('project','이름과 추가 고려사항',5,'웹앱 이름과 마지막으로 남길 요청이 있나요?','가칭, 특별한 운영 조건, 중복 접속이나 네트워크 끊김 처리 등을 자유롭게 적어주세요.',['가칭은 AI가 제안 · 추가 요청 없음','이름은 나중에 결정 · 중복 접속과 재접속 정책 검토 필요'],{placeholder:'예: 가칭 생각 모으기. 같은 모둠 코드로 다시 들어오면 기존 활동을 이어가면 좋겠어요.'})
   ];
   const value=(answers,id)=>Array.isArray(answers[id])?answers[id].join(' / '):answers[id]||'';
-  function activityOptions(answers){const subjects=Array.isArray(answers.subjects)?answers.subjects:[answers.subjects].filter(Boolean);return subjects.flatMap(subject=>(activities[subject]||common).map(label=>({label,group:subject,value:`${subject} · ${label}`})));}
+  function activityOptions(answers){const subjects=Array.isArray(answers.subjects)?answers.subjects:[answers.subjects].filter(Boolean);return subjects.flatMap(subject=>(activities[baseOf(subject)]||common).map(label=>({label,group:subject,value:`${subject} · ${label}`})));}
   function selectedBranches(answers){const text=value(answers,'activity');const matched=branches.filter(b=>b.match.test(text));return matched.length?matched:branches.slice(0,4);}
   function options(id,answers){if(id==='activity')return activityOptions(answers);
+    if(id==='subjects')return [...subjectsFor(answers.school),'기타 · 직접 입력'];
     {const g=subjectGenerated(id,answers);if(g.length&&!['objective','story','materials'].includes(id)){const baseAll=['method','flow','rules','feedback'].includes(id)?null:(steps.find(s=>s.id===id)?.options||[]);if(baseAll===null){/* handled below */}else if(mixBase.has(id)){const seen=new Set(g.map(x=>x.label));return [...g,...baseAll.filter(l=>!seen.has(l)).map(l=>({label:l,group:'공통',value:l}))];}else return g;}}
     const subjectSpecific={objective:[langObjectives,objectives],story:[langStory,stories],materials:[langMaterials,materialSets]}[id];
     if(subjectSpecific){const list=bySubject(answers,id,...subjectSpecific);if(list.length)return list;}if(['method','materials','flow','rules','feedback'].includes(id)){const key=id==='method'?'methods':id;const seen=new Set(subjectGenerated(id,answers).map(x=>x.label));return [...subjectGenerated(id,answers),...selectedBranches(answers).flatMap(b=>b[key].filter(label=>{if(seen.has(label))return false;seen.add(label);return true;}).map(label=>({label,group:b.label,value:label})))];}return steps.find(s=>s.id===id)?.options||[];}
@@ -225,5 +231,5 @@ globalThis.Planning = (() => {
   function labeledAnswers(answers){return steps.filter(s=>answers[s.id]&&(!s.when||s.when(answers))).map(s=>`- ${s.title}: ${value(answers,s.id)}`).join('\n')||'(아직 정한 답변 없음)';}
   function coachPrompt(answers,id,request,proposal=false){const s=steps.find(s=>s.id===id);return `당신은 수업 웹앱 설계 동료다. 한국어로 대화한다. 사용자는 아래의 수업을 설계하고 있고, 지금까지 정한 답변과 일관되게 도와야 한다.\n[지금까지 정한 수업 정보]\n${labeledAnswers(answers)}\n\n[지금 정하는 질문] ${s?.question||'최종 검토'}\n[활동 분기] ${selectedBranches(answers).map(b=>b.label).join(', ')}\n\n규칙: 위 과목·학교급·학년·단원 주제·배움의 목표·활동에 반드시 맞는 내용만 쓴다. 다른 과목에도 그대로 쓸 수 있는 일반적인 답을 하지 않는다. 이미 정한 답변과 충돌하면 그 점을 알린다. 사용자가 정하지 않은 내용은 [제안]이라고 표시한다. 평가 요소를 추천하는 요청으로 오해하지 않는다. 교과서나 성취기준은 추측하지 않는다.\n${proposal?'현재 질문에 들어갈 구체적인 답변 초안 1개만 작성한다. 활동·주제를 연결하고 실제 문구·개수·조건을 필요한 만큼 제안한다. 다른 단계로 진행하거나 전체 PRD를 쓰지 않는다. 마크다운 기호 없이 순수한 문장으로만, 간결하게 쓴다. JSON {"draft":"초안"} 하나만 출력한다.':'사용자의 질문에 간결하게 설명하고 가능한 선택지를 비교한다. 답변을 확정하거나 자동으로 다음 단계로 넘어가지 않는다. answer에는 마크다운 표·제목·구분선 없이 짧은 문단과 "- " 목록만 쓰고 600자 이내로 한다. choices에는 사용자가 현재 질문의 답변으로 바로 고를 수 있는 짧은 문장 3~4개를 쓴다(질문 형태 금지). JSON {"answer":"...","choices":["...","..."]} 하나만 출력한다.'}\n사용자 메시지: ${request}`;}
   function migrate(saved){if(!saved||!saved.answers||!Array.isArray(saved.messages))return null;const next={...saved,version:2};if(saved.version!==2){next.step=steps.findIndex(s=>!saved.answers[s.id]);if(next.step<0)next.step=steps.length;next.draftStale=!!saved.draft;}else next.step=Math.min(Math.max(Number(saved.step)||0,0),steps.length);return next;}
-  return {steps,visibleSteps,groups,options,sections,checks,conflicts,prompt,promptPart,prdParts,coachPrompt,migrate,selectedBranches};
+  return {steps,visibleSteps,groups,options,sections,checks,conflicts,prompt,promptPart,prdParts,coachPrompt,subjectsFor,migrate,selectedBranches};
 })();
