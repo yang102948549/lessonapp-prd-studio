@@ -1,11 +1,18 @@
 const $ = id => document.getElementById(id);
-const STORAGE = 'lessonapp.workspace.v1';
+const STORAGE = 'lessonapp.workspace.v1', PROJECTS_KEY = 'oni.projects.v1', DEFAULT_NAME = '나의 수업 웹앱';
 const definitions = Planning.steps;
 const fresh = () => ({version:2,step:0,answers:{},messages:[],draft:'',draftStale:false,previousDraft:'',extraSubjects:[]});
-let state = fresh();
-try {const saved=Planning.migrate(JSON.parse(localStorage.getItem(STORAGE)));if(saved)state={...fresh(),...saved};}catch{}
-let selected = new Set(Array.isArray(state.answers[definitions[state.step]?.id])?state.answers[definitions[state.step].id]:[]), apiKey='', model='gemini-3.8-flash', busy=false, editing=false, controller, toastTimer, chatMode='answer';
-function persist(){try{localStorage.setItem(STORAGE,JSON.stringify(state));$('save-status').textContent='이 기기에 저장됨';}catch{$('save-status').textContent='저장 공간 부족 · MD로 다운로드하세요';}}
+let state = fresh(), projects = [], currentId = '';
+const uid=()=>'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const loadState=raw=>{try{const saved=Planning.migrate(raw);return saved?{...fresh(),...saved}:fresh();}catch{return fresh();}};
+try{const all=JSON.parse(localStorage.getItem(PROJECTS_KEY)||'null');if(all&&Array.isArray(all.items)&&all.items.length){projects=all.items.map(p=>({id:p.id||uid(),name:p.name||DEFAULT_NAME,updated:p.updated||0,state:p.state}));currentId=projects.some(p=>p.id===all.current)?all.current:projects[0].id;}}catch{}
+if(!projects.length){let old=null;try{old=JSON.parse(localStorage.getItem(STORAGE));}catch{}projects=[{id:uid(),name:DEFAULT_NAME,updated:Date.now(),state:loadState(old)}];currentId=projects[0].id;}
+state=loadState(projects.find(p=>p.id===currentId).state);
+const currentProject=()=>projects.find(p=>p.id===currentId);
+let selected = new Set(Array.isArray(state.answers[definitions[state.step]?.id])?state.answers[definitions[state.step].id]:[]), apiKey='', model='gemini-3.8-flash', busy=false, editing=false, toastTimer, chatMode='answer';
+const deletedIds=new Set();
+function mergeStored(){try{const all=JSON.parse(localStorage.getItem(PROJECTS_KEY)||'null');(all?.items||[]).forEach(p=>{if(p.id&&!deletedIds.has(p.id)&&!projects.some(x=>x.id===p.id))projects.push({id:p.id,name:p.name||DEFAULT_NAME,updated:p.updated||0,state:p.state});});}catch{}}
+function persist(){try{mergeStored();const p=currentProject();p.state=state;p.updated=Date.now();localStorage.setItem(PROJECTS_KEY,JSON.stringify({current:currentId,items:projects}));$('save-status').textContent='브라우저에 저장됨';}catch{$('save-status').textContent='저장 공간 부족 · MD로 다운로드하세요';}}
 function toast(message){$('toast').textContent=message;$('toast').style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').style.display='none',2800);}
 function redact(text){return String(text).replace(/AIza[\w-]{20,}/g,'[API 키 삭제됨]').split(apiKey || '\u0000').join(apiKey?'[API 키 삭제됨]':'\u0000');}
 function addMessage(role,text){state.messages.push({role,text:redact(text),kind:'conversation'});}
@@ -28,7 +35,7 @@ function splitChoices(text){const m=text.match(/\n*\[선택지\]\s*\n([\s\S]*)$/
 function gradeOptions(){return Array.from({length:state.answers.school==='초등학교'?6:3},(_,i)=>`${i+1}학년`);}
 function answerText(id){const value=state.answers[id];return Array.isArray(value)?value.join(', '):value||'';}
 function sections(){return Planning.sections(state.answers);}
-function outlineMarkdown(){return '# 나의 수업 웹앱 PRD\n\n> 질문 답변을 정리한 설계 초안입니다. [미정] 항목과 자료 원문을 확인하고 상세 PRD를 생성하세요.\n\n'+sections().map(([title,value],i)=>`## ${i+1}. ${title}\n${value}`).join('\n\n');}
+function outlineMarkdown(){return '# '+currentProject().name+' PRD\n\n> 질문 답변을 정리한 설계 초안입니다. [미정] 항목과 자료 원문을 확인하고 상세 PRD를 생성하세요.\n\n'+sections().map(([title,value],i)=>`## ${i+1}. ${title}\n${value}`).join('\n\n');}
 function markdown(){return state.draft||outlineMarkdown();}
 function renderMarkdown(root,text){
   root.replaceChildren();
@@ -38,6 +45,7 @@ function renderMarkdown(root,text){
   });
 }
 function renderDocument(){
+  document.querySelector('.paper h2').textContent=currentProject().name;
   renderMarkdown($('prd-preview'),markdown());
   const checks=Planning.checks(state.answers);const done=checks.filter(c=>c.done).length;
   $('progress').style.width=`${done/checks.length*100}%`;
@@ -50,7 +58,22 @@ function renderDocument(){
   if(!editing)$('document-editor').value=markdown();
 }
 function goStep(index){if(busy)return;state.step=index;selected=new Set(Array.isArray(state.answers[definitions[index]?.id])?state.answers[definitions[index].id]:[]);persist();render();$('detail-panel').classList.remove('mobile-open');scrollChat();}
+function resetView(){selected=new Set(Array.isArray(state.answers[definitions[state.step]?.id])?state.answers[definitions[state.step].id]:[]);editing=false;$('document-editor').hidden=true;$('prd-preview').hidden=false;$('edit-doc').textContent='직접 편집';$('chat-input').value='';$('chat-notice').textContent='';$('detail-panel').classList.remove('mobile-open');}
+function switchProject(id){if(busy||id===currentId)return;persist();currentId=id;state=loadState(currentProject().state);resetView();persist();render();scrollChat();}
+function newProject(){if(busy)return;persist();const n=projects.length+1;let name=`새 프로젝트 ${n}`;while(projects.some(p=>p.name===name))name=`새 프로젝트 ${projects.length+Math.floor(Math.random()*90+10)}`;const p={id:uid(),name,updated:Date.now(),state:fresh()};projects.push(p);currentId=p.id;state=p.state;resetView();persist();render();toast('새 프로젝트를 만들었어요.');}
+function renameProject(id=currentId){const p=projects.find(x=>x.id===id);const name=(window.prompt('프로젝트 이름',p.name)||'').trim().slice(0,40);if(!name)return;p.name=name;persist();render();}
+function deleteProject(id){if(busy)return;const p=projects.find(x=>x.id===id);if(!window.confirm(`“${p.name}” 프로젝트를 삭제할까요? 대화와 기획서가 모두 사라져요.`))return;if(projects.length===1){p.state=fresh();p.name=DEFAULT_NAME;state=p.state;resetView();persist();render();return;}const idx=projects.indexOf(p);projects.splice(idx,1);deletedIds.add(id);if(id===currentId){currentId=projects[Math.min(idx,projects.length-1)].id;state=loadState(currentProject().state);resetView();}persist();render();toast('프로젝트를 삭제했어요.');}
+function renderProjects(){
+  const list=$('project-list');list.replaceChildren();
+  projects.forEach(p=>{const row=document.createElement('div');row.className='project-row'+(p.id===currentId?' active':'');
+    const open=document.createElement('button');open.type='button';open.className='project-open';open.textContent=p.name;open.title=p.name;open.disabled=busy;if(p.id===currentId)open.setAttribute('aria-current','true');open.onclick=()=>switchProject(p.id);
+    const edit=document.createElement('button');edit.type='button';edit.className='project-tool';edit.textContent='✎';edit.setAttribute('aria-label',`${p.name} 이름 바꾸기`);edit.onclick=()=>renameProject(p.id);
+    const del=document.createElement('button');del.type='button';del.className='project-tool';del.textContent='✕';del.setAttribute('aria-label',`${p.name} 삭제`);del.disabled=busy;del.onclick=()=>deleteProject(p.id);
+    row.append(open,edit,del);list.append(row);});
+  $('project-title').textContent=currentProject().name;
+}
 function render(){
+  renderProjects();
     const messages=$('messages');messages.replaceChildren();let shown=0;state.messages.forEach((m,index)=>{if(m.role==='user'&&m.kind!=='conversation')return;shown++;const div=document.createElement('div');div.className=`message ${m.role==='user'?'user':'assistant'}`;const del=document.createElement('button');del.type='button';del.className='message-delete';del.textContent='삭제';del.setAttribute('aria-label','이 메시지 삭제');del.disabled=busy;del.onclick=()=>{state.messages.splice(index,1);persist();render();};if(m.role!=='user'){const label=document.createElement('span');label.className='message-label';label.textContent='Oni 코치';div.append(label);const {body,choices}=splitChoices(m.text);div.append(renderMd(body));if(choices.length){const row=document.createElement('div');row.className='md-choices';choices.forEach(c=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=c;b.disabled=busy;b.onclick=()=>{$('chat-input').value=c;$('chat-input').focus();$('chat-notice').textContent='선택한 내용을 입력창에 넣었어요. 고쳐 쓴 뒤 전송하면 답변으로 반영됩니다.';};row.append(b);});div.append(row);}}else div.append(document.createTextNode(m.text));div.append(del);messages.append(div);});$('clear-chat').hidden=!shown;$('clear-chat').disabled=busy;
   $('steps').replaceChildren();
   Planning.groups.forEach((group,g)=>{const wrapper=document.createElement('details');wrapper.open=definitions[state.step]?.group===g;const summary=document.createElement('summary');const members=Planning.visibleSteps(state.answers).filter(d=>d.group===g);summary.textContent=`${g+1}. ${group}  ${members.filter(d=>state.answers[d.id]).length}/${members.length}`;wrapper.append(summary);members.forEach(def=>{const i=definitions.indexOf(def);const button=document.createElement('button');button.className=i===state.step?'current':'';button.disabled=busy;const dot=document.createElement('span');dot.className='step-dot';dot.textContent=state.answers[def.id]?'✓':'·';button.append(dot,document.createTextNode(def.title));button.onclick=()=>goStep(i);wrapper.append(button);});$('steps').append(wrapper);});
@@ -160,7 +183,7 @@ $('copy-doc').onclick=async()=>{try{await navigator.clipboard.writeText(markdown
 $('download-doc').onclick=()=>{const url=URL.createObjectURL(new Blob([markdown()],{type:'text/markdown;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Oni-PRD.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 $('edit-doc').onclick=()=>{if(busy)return;if(!editing)state.previousDraft=markdown();editing=!editing;$('prd-preview').hidden=editing;$('document-editor').hidden=!editing;$('edit-doc').textContent=editing?'편집 완료':'직접 편집';if(editing){$('document-editor').value=markdown();$('document-editor').focus();}else renderDocument();};
 $('document-editor').oninput=()=>{state.draft=redact($('document-editor').value);persist();};
-$('new-chat').onclick=()=>$('reset-dialog').showModal();$('cancel-reset').onclick=()=>$('reset-dialog').close();$('confirm-reset').onclick=()=>{state=fresh();selected.clear();editing=false;$('document-editor').hidden=true;$('prd-preview').hidden=false;$('edit-doc').textContent='직접 편집';$('chat-input').value='';$('chat-notice').textContent='';persist();render();$('reset-dialog').close();};$('current-chat').onclick=()=>{$('detail-panel').classList.remove('mobile-open');$('chat-input').focus();};
+$('new-chat').onclick=newProject;$('project-title').onclick=()=>renameProject();;
 render();
 
 $('skip-step').onclick=()=>accept('미정 · 추가 구체화 필요');
@@ -171,3 +194,9 @@ $('clear-chat').onclick=()=>{if(busy)return;state.messages=[];persist();render()
 $('restore-draft').onclick=()=>{if(busy)return;const current=markdown();state.draft=state.previousDraft;state.previousDraft=current;state.draftStale=true;persist();render();toast('이전 문서를 복원했어요. 최신 답변과 맞는지 확인해 주세요.');};
 
 $('clear-answer').onclick=()=>{const def=definitions[state.step];if(!def||busy)return;delete state.answers[def.id];if(def.id==='school')delete state.answers.grades;if(def.id==='subjects'){delete state.answers.activity;delete state.answers.method;}if(def.id==='activity')delete state.answers.method;if(def.id==='teacher')delete state.answers.teacherView;selected=new Set();state.draftStale=!!state.draft;$('chat-input').value='';$('chat-notice').textContent='';persist();render();toast('이전에 정한 내용을 지웠어요. 다시 선택하거나 입력해 주세요.');};
+
+$('export-projects').onclick=()=>{persist();const blob=new Blob([JSON.stringify({app:'oni-studio',version:1,items:projects},null,1)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='oni-studio-projects.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+$('import-projects').onclick=()=>$('import-file').click();
+$('import-file').onchange=async()=>{const file=$('import-file').files[0];$('import-file').value='';if(!file)return;try{const data=JSON.parse(await file.text());if(!Array.isArray(data.items))throw 0;persist();let count=0;data.items.forEach(p=>{if(p&&p.state&&Array.isArray(p.state.messages||[])){projects.push({id:uid(),name:String(p.name||DEFAULT_NAME).slice(0,40),updated:Date.now(),state:loadState(p.state)});count++;}});if(!count)throw 0;persist();render();toast(`${count}개 프로젝트를 불러왔어요.`);}catch{toast('프로젝트 파일을 읽지 못했어요.');}};
+
+window.addEventListener('storage',e=>{if(e.key===PROJECTS_KEY&&!busy){mergeStored();renderProjects();}});

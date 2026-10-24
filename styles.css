@@ -45,3 +45,13 @@
 .md-choices{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:6px}.md-choices .chip{max-width:100%}
 #clear-chat{display:block;margin:0 0 14px auto;font-size:13px;color:var(--muted)}
 .ask-ai{font-size:13px;padding:6px 11px;border-radius:999px;background:var(--bg)}
+
+.project-list{display:flex;flex-direction:column;gap:2px;max-height:30vh;overflow-y:auto;margin-bottom:4px}
+.project-row{display:flex;align-items:center;border-radius:8px}.project-row.active{background:#eaeae7}
+.project-open{flex:1;min-width:0;text-align:left;background:transparent;border:0;padding:10px 12px;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.project-row.active .project-open{font-weight:600}
+.project-tool{background:transparent;border:0;padding:6px 7px;font-size:13px;color:var(--muted);opacity:0}.project-row:hover .project-tool,.project-row:focus-within .project-tool,.project-row.active .project-tool{opacity:.8}
+.title-button{background:transparent;border:0;padding:4px 6px;font-size:16px;font-weight:600}.title-button:hover{background:var(--surface)}
+.icon-button{font-size:13px!important;border:1px solid var(--border)!important;padding:6px 10px!important;display:none}
+@media(max-width:1150px){.icon-button{display:inline-block}}
+.backup-row{align-items:flex-start}.backup-buttons{display:flex;gap:6px;flex-shrink:0}.backup-buttons button{font-size:13px;padding:7px 10px}
+@media(max-width:920px){.project-list{display:none}}
