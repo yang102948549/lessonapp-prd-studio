@@ -4,7 +4,7 @@ const definitions = Planning.steps;
 const fresh = () => ({version:2,step:0,answers:{},messages:[],draft:'',draftStale:false,previousDraft:'',extraSubjects:[]});
 let state = fresh();
 try {const saved=Planning.migrate(JSON.parse(localStorage.getItem(STORAGE)));if(saved)state={...fresh(),...saved};}catch{}
-let selected = new Set(Array.isArray(state.answers[definitions[state.step]?.id])?state.answers[definitions[state.step].id]:[]), apiKey='', model='gemini-2.5-flash', busy=false, editing=false, controller, toastTimer, chatMode='answer';
+let selected = new Set(Array.isArray(state.answers[definitions[state.step]?.id])?state.answers[definitions[state.step].id]:[]), apiKey='', model='gemini-3.8-flash', busy=false, editing=false, controller, toastTimer, chatMode='answer';
 function persist(){try{localStorage.setItem(STORAGE,JSON.stringify(state));$('save-status').textContent='이 기기에 저장됨';}catch{$('save-status').textContent='저장 공간 부족 · MD로 다운로드하세요';}}
 function toast(message){$('toast').textContent=message;$('toast').style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').style.display='none',2800);}
 function redact(text){return String(text).replace(/AIza[\w-]{20,}/g,'[API 키 삭제됨]').split(apiKey || '\u0000').join(apiKey?'[API 키 삭제됨]':'\u0000');}
@@ -118,16 +118,15 @@ async function listModels(key){
   catch(error){if(error instanceof TypeError)throw new Error('네트워크 연결을 확인해 주세요. 광고 차단 프로그램이나 학교 네트워크가 Google API를 막고 있을 수 있어요.');throw error;}
   return out.filter(m=>/^gemini-/.test(m.id)&&!/embedding|tts|image|live|aqa|robotics|computer-use/.test(m.id));
 }
-function fillModels(list){const select=$('model');select.replaceChildren();for(const m of list){const o=document.createElement('option');o.value=m.id;o.textContent=m.label+' ('+m.id+')';select.append(o);}const pick=list.find(m=>m.id===model)||list.find(m=>m.id==='gemini-2.5-flash')||list[0];select.value=pick.id;model=pick.id;select.disabled=false;}
+function fillModels(list){const select=$('model');select.replaceChildren();for(const m of list){const o=document.createElement('option');o.value=m.id;o.textContent=m.label+' ('+m.id+')';select.append(o);}const pick=list.find(m=>m.id===model)||list.find(m=>m.id==='gemini-3.8-flash')||list[0];select.value=pick.id;model=pick.id;select.disabled=false;}
 $('model').onchange=()=>{model=$('model').value;toast('모델을 변경했어요.');};
 $('connect-key').onclick=async()=>{if(busy)return;const key=$('api-key').value.trim();if(!key){$('key-status').textContent='API 키를 입력해 주세요.';return;}busy=true;$('connect-key').disabled=true;$('remove-key').disabled=true;render();$('key-status').textContent='연결 확인 중…';try{const list=await listModels(key);if(!list.length)throw new Error('이 키로 사용할 수 있는 Gemini 모델이 없어요.');apiKey=key;fillModels(list);$('api-key').value='';$('key-status').textContent='연결되었습니다. 아래 목록에서 모델을 선택하세요. 키는 새로고침 전까지만 유지됩니다.';updateConnection();}catch(error){$('key-status').textContent=error.message;}finally{busy=false;$('connect-key').disabled=false;$('remove-key').disabled=false;render();}};
-$('remove-key').onclick=()=>{if(busy){toast('진행 중인 요청이 끝난 뒤 삭제해 주세요.');return;}apiKey='';$('model').replaceChildren(new Option('연결 후 선택할 수 있어요','gemini-2.5-flash'));$('model').disabled=true;model='gemini-2.5-flash';$('api-key').value='';$('api-key').type='password';$('toggle-key').textContent='보기';$('key-status').textContent='키를 삭제했습니다.';updateConnection();};
+$('remove-key').onclick=()=>{if(busy){toast('진행 중인 요청이 끝난 뒤 삭제해 주세요.');return;}apiKey='';$('model').replaceChildren(new Option('연결 후 선택할 수 있어요','gemini-3.8-flash'));$('model').disabled=true;model='gemini-3.8-flash';$('api-key').value='';$('api-key').type='password';$('toggle-key').textContent='보기';$('key-status').textContent='키를 삭제했습니다.';updateConnection();};
 $('ai-refine').onclick=()=>refine('입력 내용을 바탕으로 구현 가능한 PRD를 정리하고, 목표·화면별 기능·수용 기준·미정 사항을 명확히 작성하세요.');
 $('copy-doc').onclick=async()=>{try{await navigator.clipboard.writeText(markdown());toast('기획서를 복사했어요.');}catch{toast('복사 권한이 없어요. MD 다운로드를 사용해 주세요.');}};
 $('download-doc').onclick=()=>{const url=URL.createObjectURL(new Blob([markdown()],{type:'text/markdown;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Oni-PRD.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 $('edit-doc').onclick=()=>{if(busy)return;if(!editing)state.previousDraft=markdown();editing=!editing;$('prd-preview').hidden=editing;$('document-editor').hidden=!editing;$('edit-doc').textContent=editing?'편집 완료':'직접 편집';if(editing){$('document-editor').value=markdown();$('document-editor').focus();}else renderDocument();};
 $('document-editor').oninput=()=>{state.draft=redact($('document-editor').value);persist();};
-$('theme-toggle').onclick=()=>{const dark=document.body.classList.toggle('dark');$('theme-toggle').textContent=dark?'라이트 모드':'다크 모드';};
 $('new-chat').onclick=()=>$('reset-dialog').showModal();$('cancel-reset').onclick=()=>$('reset-dialog').close();$('confirm-reset').onclick=()=>{state=fresh();selected.clear();editing=false;$('document-editor').hidden=true;$('prd-preview').hidden=false;$('edit-doc').textContent='직접 편집';$('chat-input').value='';$('chat-notice').textContent='';persist();render();$('reset-dialog').close();};$('current-chat').onclick=()=>{$('detail-panel').classList.remove('mobile-open');$('chat-input').focus();};
 render();
 
