@@ -156,6 +156,7 @@ function renderChips(def,options){
   const box=$('chips');if(!def)return;
   const all=options.map(raw=>typeof raw==='string'?{label:raw,value:raw}:raw);
   const known=new Set(all.map(o=>o.value));[...selected].filter(v=>!known.has(v)).forEach(v=>all.push({label:v,value:v,group:'직접 입력·수정한 항목'}));
+  box.classList.toggle('list',all.some(o=>o.label.length>14));
   let lastGroup='';
   all.forEach(option=>{
     if(option.group&&option.group!==lastGroup){const label=document.createElement('div');label.className='chip-group-label';label.textContent=option.group;box.append(label);lastGroup=option.group;}

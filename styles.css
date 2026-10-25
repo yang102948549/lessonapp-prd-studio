@@ -208,3 +208,15 @@
 
 /* 진행 중 안내(상세 PRD 작성 중 등)는 앱의 틸 색으로, 오류·경고는 기존 주황 유지 */
 #chat-notice.progress{color:#5a7565;font-weight:500}
+
+/* 선택지 정렬: 긴 문구가 하나라도 있으면 모두 한 줄에 하나씩 같은 너비로 */
+.chips.list{flex-direction:column;align-items:stretch;gap:8px}
+.chips.list .chip-wrap{display:flex;width:100%}
+.chips.list .chip-wrap .chip{flex:1;text-align:left}
+.chips.list .chip-group-label{margin:10px 0 0}
+
+/* 프로젝트 행: 이름·수정·삭제를 한 줄로 함께 호버 */
+.project-row:hover{background:#eaeae7}
+.project-open:hover,.project-open:focus-visible{background:transparent}
+.project-tool{border-radius:6px}
+.project-tool:hover{background:#d9d9d4;color:var(--fg);opacity:1}
