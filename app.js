@@ -104,7 +104,7 @@ const mapOpen=new Set();let mapGrpSeen=-1,mapStepSeen=-2,mapSel='';
 const NO_TEXT_EDIT=new Set(['school','grades','subjects','stack']);
 const mk=(tag,cls,txt)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e;};
 function mapFocus(){const el=$('map-canvas').querySelector('.t-step.current');const sc=$('map-scroll');if(!el||!sc.clientHeight)return;const top=el.getBoundingClientRect().top-sc.getBoundingClientRect().top+sc.scrollTop;sc.scrollTo({top:Math.max(0,top-sc.clientHeight/3),behavior:'smooth'});}
-/* 계획 지도: 위에서 아래로 뻗는 트리. 프로젝트 → 1부 수업 설계·2부 웹앱 구상 → 질문 묶음 → 질문. 질문을 누르면 그 자리에서 답 전체를 보고 고칠 수 있다 */
+/* 계획 지도: 위에서 아래로 뻗는 트리. 프로젝트 → 수업 설계·웹앱 구상 → 질문 묶음 → 질문. 질문을 누르면 그 자리에서 답 전체를 보고 고칠 수 있다 */
 function renderMap(){
   const host=$('map-canvas');host.replaceChildren();const cur=definitions[state.step];
   if(cur&&cur.group!==mapGrpSeen){mapOpen.add(cur.group);mapGrpSeen=cur.group;}
@@ -188,10 +188,10 @@ function render(){
   Planning.groups.forEach((group,g)=>{const part=Planning.parts.find(p=>p.groups[0]===g);if(part){const pl=document.createElement('div');pl.className='steps-part';pl.textContent=part.title;$('steps').append(pl);}const wrapper=document.createElement('details');wrapper.open=definitions[state.step]?.group===g;const summary=document.createElement('summary');const members=Planning.visibleSteps(state.answers).filter(d=>d.group===g);const gd=members.filter(d=>isAnswered(d.id)).length;summary.textContent=`${g+1}. ${group}  ${gd}/${members.length}${members.length&&gd===members.length?' ✓':''}`;wrapper.append(summary);members.forEach(def=>{const i=definitions.indexOf(def);const button=document.createElement('button');const ans=isAnswered(def.id),skip=ans&&/^미정/.test(answerText(def.id));button.className=[i===state.step?'current':'',ans&&!skip?'done':'',skip?'skip':''].filter(Boolean).join(' ');button.title=skip?'미정으로 남긴 질문':ans?'답변함':'아직 답하지 않음';button.disabled=busy;const dot=document.createElement('span');dot.className='step-dot';dot.textContent=skip?'?':ans?'✓':'';const label=document.createElement('span');label.className='step-label';label.textContent=def.title;button.append(dot,label);button.onclick=()=>goStep(i);wrapper.append(button);});$('steps').append(wrapper);});
   const def=definitions[state.step];$('chips').replaceChildren();$('custom-wrap').hidden=true;
   const visible=Planning.visibleSteps(state.answers);
-  $('step-count').textContent=def?`${Planning.parts.find(p=>p.groups.includes(def.group)).title.split(' · ')[0]} · ${Planning.groups[def.group]} · ${visible.indexOf(def)+1}/${visible.length}`:'답변 검토';
+
   $('question').textContent=def?def.question:'이제 구현할 수 있는 상세 PRD로 구체화해요.';
   $('question-help').textContent=def?def.help:'자료 원문, 화면별 행동, 이동 조건, 피드백 문구와 완료 기준을 정리합니다. 오른쪽의 빠진 항목과 충돌을 먼저 확인하세요.';
-  $('branch-context').textContent=def&&def.group>0?[answerText('subjects'),answerText('activity'),answerText('method')].filter(Boolean).join(' → '):'';
+
   $('chat-input').placeholder=chatMode==='coach'?'예: 이 활동에 어떤 자료가 필요할까요? 두 방식을 비교해 주세요.':def?def.placeholder:'기획서에서 바꾸고 싶은 점을 이야기해 주세요';
   $('continue').hidden=!def?.multi;$('continue').disabled=!selected.size||busy;
   $('skip-step').hidden=!def||state.step<3;$('skip-step').disabled=busy;
@@ -330,6 +330,8 @@ $('copy-doc').onclick=async()=>{try{await navigator.clipboard.writeText(markdown
 $('download-doc').onclick=()=>{const url=URL.createObjectURL(new Blob([markdown()],{type:'text/markdown;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Oni-PRD.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 $('edit-doc').onclick=()=>{if(busy)return;if(!editing)state.previousDraft=markdown();editing=!editing;$('prd-preview').hidden=editing;$('document-editor').hidden=!editing;$('edit-doc').textContent=editing?'편집 완료':'직접 편집';if(editing){$('document-editor').value=markdown();$('document-editor').focus();}else renderDocument();};
 $('document-editor').oninput=()=>{state.draft=redact($('document-editor').value);persist();};
+const SB_KEY='oni.sidebar.v1';let sbState={};try{sbState=JSON.parse(localStorage.getItem(SB_KEY)||'{}');}catch{}
+document.querySelectorAll('.sb-toggle').forEach(btn=>{const target=$(btn.dataset.target);const apply=open=>{target.hidden=!open;btn.setAttribute('aria-expanded',String(open));};apply(sbState[btn.dataset.target]!==false);btn.onclick=()=>{const open=target.hidden;apply(open);sbState[btn.dataset.target]=open;try{localStorage.setItem(SB_KEY,JSON.stringify(sbState));}catch{}};});
 $('new-chat').onclick=newProject;$('project-title').onclick=()=>renameProject();;
 render();
 

@@ -200,3 +200,8 @@
 .new-project:hover{background:var(--surface);color:var(--fg)}
 @media(max-width:920px){.side-intro,.new-project{display:none}}
 
+/* 접을 수 있는 사이드바 섹션 */
+.sb-toggle{display:flex;justify-content:space-between;align-items:center;width:calc(100% - 24px);margin:22px 12px 8px;padding:4px 0;border:0;border-radius:6px;background:transparent;font-size:14px;color:var(--muted);text-align:left}
+.sb-toggle::after{content:'▾';font-size:12px}
+.sb-toggle[aria-expanded=false]::after{content:'▸'}
+.sb-toggle:hover{background:transparent;color:var(--fg)}
