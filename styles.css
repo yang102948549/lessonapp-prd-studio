@@ -155,3 +155,14 @@
 .chip-editor{width:100%;display:flex;flex-direction:column;gap:8px;border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--side)}
 .chip-edit{width:100%;min-height:76px;border:1px solid #c9c9c5;border-radius:8px;padding:10px 12px;font-size:16px;line-height:1.6;background:var(--bg);color:var(--fg);resize:vertical}
 .chip-editor-actions{display:flex;gap:8px}.chip-editor-actions button{font-size:14px;padding:8px 14px}
+
+/* 사이드바 답변 상태 */
+#steps .step-dot{background:var(--bg)}
+#steps button.done{color:var(--muted)}
+#steps button.done .step-label{text-decoration:line-through;text-decoration-thickness:1px;text-decoration-color:var(--muted)}
+#steps button.done .step-dot{background:#718b7c;border-color:#718b7c;color:#fff}
+#steps button.skip{color:#9b6026}
+#steps button.skip .step-dot{border:1px dashed #9b6026;color:#9b6026}
+#steps button.current .step-label{text-decoration:none}
+#steps button.current.done{color:var(--fg)}
+#steps button.current .step-dot{background:var(--accent);border-color:var(--accent);color:var(--inverse)}
