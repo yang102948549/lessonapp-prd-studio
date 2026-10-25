@@ -20,7 +20,7 @@ globalThis.Prompt = (() => {
     {id:'open', title:'아직 정하지 않은 것', hint:'미정·고민 중인 사항, 다음에 물어볼 것'}
   ];
 
-  /* 왼쪽 '현재 단계'와 오른쪽 마인드맵이 쓰는 묶음 */
+  /* 왼쪽 '현재 단계'와 오른쪽 계획 지도이 쓰는 묶음 */
   const parts = [
     {id:'A', title:'A. 어떤 수업에서 사용할까요?', ids:['tool','context','why']},
     {id:'B', title:'B. 학생이 무엇을 하게 할까요?', ids:['goal','action']},

@@ -5,7 +5,7 @@
   <meta name="description" content="대화하며 만드는 수업 웹앱 PRD">
   <meta name="referrer" content="no-referrer">
   <title>Oni Studio</title>
-  <link rel="stylesheet" href="styles.css?v=5"><script defer src="prompt.js?v=5"></script><script defer src="app.js?v=5"></script>
+  <link rel="stylesheet" href="styles.css?v=6"><script defer src="prompt.js?v=6"></script><script defer src="app.js?v=6"></script>
 </head>
 <body>
 <aside class="sidebar">
@@ -30,8 +30,8 @@
         </form>
       </div>
     </section>
-    <aside class="detail-panel" id="detail-panel" aria-label="마인드맵, 기획서, 설정">
-      <div class="panel-tabs" role="tablist"><button id="map-tab" role="tab" aria-selected="true"><svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 12H12c2 0 3-1 4-4M12 12c2 0 3 1 4 4"/></svg> 마인드맵</button><button id="document-tab" role="tab" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg> 기획서</button><button id="settings-tab" role="tab" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg> 설정</button></div>
+    <aside class="detail-panel" id="detail-panel" aria-label="계획 지도, 기획서, 설정">
+      <div class="panel-tabs" role="tablist"><button id="map-tab" role="tab" aria-selected="true"><svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 12H12c2 0 3-1 4-4M12 12c2 0 3 1 4 4"/></svg> 계획 지도</button><button id="document-tab" role="tab" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg> 기획서</button><button id="settings-tab" role="tab" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg> 설정</button></div>
       <section id="map-panel" role="tabpanel" aria-labelledby="map-tab"><div class="map-toolbar"><span id="map-summary"></span><span class="map-tools"><button id="map-expand" class="text-button">모두 펼치기</button><button id="map-collapse" class="text-button">현재만 보기</button></span></div><div class="map-legend"><span><i class="lg done"></i>채워짐</span><span><i class="lg current"></i>지금 이야기 중</span><span><i class="lg todo"></i>아직</span></div><div class="map-scroll" id="map-scroll"><div id="map-canvas" class="map-canvas"></div></div><p class="map-help">항목을 누르면 내용이 열리고 바로 고칠 수 있어요 · 대화하면 AI가 알아서 채워 줘요</p></section>
       <section id="document-panel" role="tabpanel" aria-labelledby="document-tab" hidden>
         <div class="document-toolbar"><span><i class="live-dot"></i> 대화에 따라 실시간으로 채워져요</span><span class="view-switch"><button id="view-live" aria-pressed="true">실시간 초안</button><button id="view-final" aria-pressed="false">상세 PRD</button></span></div>
