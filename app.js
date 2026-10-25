@@ -100,7 +100,7 @@ function renderStackCard(def){const card=$('stack-card');card.hidden=!(def&&def.
   const dl=document.createElement('dl');[['프론트엔드',r.frontend],['백엔드·저장',r.backend],['배포',r.deploy],['무료 범위',r.free],['주의',r.caution]].forEach(([k,v])=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=k;dd.textContent=v;dl.append(dt,dd);});card.append(dl);
   r.warnings.forEach(w=>add('p','⚠ '+w,'warn'));
 }
-function renderAnswerLog(){
+function renderAnswerLog(){$('intro').hidden=Object.keys(state.answers).some(k=>isAnswered(k));
   const wrap=$('answer-log-wrap'),box=$('answer-log');const items=definitions.filter(d=>isVisible(d)&&isAnswered(d.id));
   wrap.hidden=!items.length;box.replaceChildren();$('answer-log-title').textContent=`내가 정한 답변 ${items.length}개 · 수정하거나 지울 수 있어요`;
   let last=-1;items.forEach(d=>{
@@ -116,27 +116,30 @@ const mapOpen=new Set();let mapSecSeen=-1,mapStepSeen=-2,mapSel='';
 const NO_TEXT_EDIT=new Set(['school','grades','subjects','stack']);
 const sectionIndexOf=id=>Planning.sectionDefs.findIndex(([,ids])=>ids.includes(id));
 const mk=(tag,cls,txt)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e;};
-function mapFocus(){const el=$('map-canvas').querySelector('.t-step.current');const sc=$('map-scroll');if(!el||!sc.clientHeight)return;const top=el.getBoundingClientRect().top-sc.getBoundingClientRect().top+sc.scrollTop;sc.scrollTo({top:Math.max(0,top-sc.clientHeight/3),behavior:'smooth'});}
-/* 계획 지도: 폴더 트리처럼 위에서 아래로. 프로젝트 → PRD 7개 섹션 → 질문. 질문을 누르면 그 자리에서 답 전체를 보고 고칠 수 있다 */
+const MAPCOLS=[76,136,210],MAPGAP=26,MAPROW={step:62,group:46},MAPSPACE=8;
+function mapFocus(){const el=$('map-canvas').querySelector('.mnode.step.current');const sc=$('map-scroll');if(el&&sc.clientHeight)sc.scrollTo({top:Math.max(0,el.offsetTop-sc.clientHeight/2+30),behavior:'smooth'});}
+/* 계획 지도: 왼쪽에서 오른쪽으로 뻗는 마인드맵. 프로젝트 → PRD 7개 섹션 → 질문. 옆으로 스크롤할 수 있고, 질문을 누르면 아래에 답 전체가 열려 고칠 수 있다 */
 function renderMap(){
   const host=$('map-canvas');host.replaceChildren();const cur=definitions[state.step];
   const curSec=cur?sectionIndexOf(cur.id):-1;if(curSec>=0&&curSec!==mapSecSeen){mapOpen.add(curSec);mapSecSeen=curSec;}
   const vis=new Set(definitions.filter(isVisible).map(d=>d.id));$('map-summary').textContent=`${definitions.filter(d=>vis.has(d.id)&&isAnswered(d.id)).length}/${vis.size} 질문에 답했어요`;
-  const rootUl=mk('ul','tree'),rootLi=mk('li','t-root');
-  const rb=mk('button','t-root-btn',currentProject().name);rb.type='button';rb.title='눌러서 프로젝트 이름 바꾸기';rb.onclick=()=>renameProject();rootLi.append(rb);
-  const secUl=mk('ul');
-  Planning.sectionDefs.forEach(([title,ids],s)=>{
-    const st=ids.filter(id=>vis.has(id)).map(id=>definitions.find(d=>d.id===id));const dn=st.filter(d=>isAnswered(d.id)).length,open=mapOpen.has(s);
-    const li=mk('li','t-sec'+(st.length&&dn===st.length?' complete':'')+(curSec===s?' current':''));
-    const b=mk('button','t-sec-btn');b.type='button';b.setAttribute('aria-expanded',String(open));b.append(mk('span','',`${open?'▾':'▸'} ${s+1}. ${title}`),mk('span','cnt',`${dn}/${st.length}`));b.onclick=()=>{open?mapOpen.delete(s):mapOpen.add(s);renderMap();};li.append(b);
-    if(open){const ul=mk('ul');st.forEach(d=>{
-      const ans=isAnswered(d.id)?answerText(d.id):'',skip=/^미정/.test(ans);
-      const sl=mk('li','t-step'+(ans&&!skip?' done':'')+(skip?' skip':'')+(d===cur?' current':'')+(d.id===mapSel?' sel':''));
-      const row=mk('div','t-row');const nb=mk('button','t-step-btn');nb.type='button';nb.title=d.question;nb.setAttribute('aria-pressed',String(d.id===mapSel));nb.append(mk('b','',d.title),mk('span','',ans||'아직 답하지 않았어요'));nb.onclick=()=>{mapSel=d.id===mapSel?'':d.id;renderMap();};row.append(nb);
-      if(ans){const x=mk('button','t-del','✕');x.type='button';x.disabled=busy;x.setAttribute('aria-label',`${d.title} 답변 지우기`);x.onclick=()=>removeAnswer(d.id);row.append(x);}
-      sl.append(row);if(d.id===mapSel)sl.append(buildMapDetail(d));ul.append(sl);});li.append(ul);}
-    secUl.append(li);});
-  rootLi.append(secUl);rootUl.append(rootLi);host.append(rootUl);
+  const root={kind:'root',label:currentProject().name,kids:Planning.sectionDefs.map(([title,ids],s)=>{const st=ids.filter(id=>vis.has(id)).map(id=>definitions.find(d=>d.id===id));const dn=st.filter(d=>isAnswered(d.id)).length;
+    return {kind:'group',s,label:`${s+1}. ${title}`,done:dn,total:st.length,kids:mapOpen.has(s)?st.map(d=>({kind:'step',d,kids:[]})):[]};})};
+  const xs=[];MAPCOLS.reduce((x,w,i)=>{xs[i]=x;return x+w+MAPGAP;},0);const depth={root:0,group:1,step:2};let cursor=0;
+  (function place(n){n.depth=depth[n.kind];n.h=n.kind==='step'?MAPROW.step:MAPROW.group;n.w=MAPCOLS[n.depth];n.x=xs[n.depth];
+    if(!n.kids.length){n.y=cursor+n.h/2;cursor+=n.h+MAPSPACE;}else{n.kids.forEach(place);n.y=(n.kids[0].y+n.kids[n.kids.length-1].y)/2;}})(root);
+  const W=xs[2]+MAPCOLS[2],H=Math.max(cursor-MAPSPACE,40);host.style.width=W+'px';host.style.height=H+'px';
+  const complete=n=>n.kind==='step'?isAnswered(n.d.id):n.kind==='group'?n.total>0&&n.done===n.total:false;
+  const NS='http://www.w3.org/2000/svg';const svg=document.createElementNS(NS,'svg');svg.setAttribute('width',W);svg.setAttribute('height',H);host.append(svg);
+  const nodes=[];(function walk(n,p){if(p){const x1=p.x+p.w,x2=n.x,mx=(x1+x2)/2,path=document.createElementNS(NS,'path');path.setAttribute('d',`M${x1},${p.y} C${mx},${p.y} ${mx},${n.y} ${x2},${n.y}`);if(complete(n))path.setAttribute('class','done');svg.append(path);}nodes.push(n);n.kids.forEach(k=>walk(k,n));})(root,null);
+  nodes.forEach(n=>{const el=mk('div','mnode '+n.kind);Object.assign(el.style,{left:n.x+'px',top:(n.y-n.h/2)+'px',width:n.w+'px',height:n.h+'px'});
+    if(n.kind==='root'){const b=mk('button','',n.label);b.type='button';b.title='눌러서 프로젝트 이름 바꾸기';b.onclick=()=>renameProject();el.append(b);}
+    else if(n.kind==='group'){el.classList.toggle('complete',complete(n));el.classList.toggle('current',curSec===n.s);const b=mk('button');b.type='button';b.setAttribute('aria-expanded',String(mapOpen.has(n.s)));b.append(mk('span','',`${mapOpen.has(n.s)?'▾':'▸'} ${n.label}`),mk('span','cnt',`${n.done}/${n.total}`));b.onclick=()=>{mapOpen.has(n.s)?mapOpen.delete(n.s):mapOpen.add(n.s);renderMap();};el.append(b);}
+    else{const d=n.d,ans=isAnswered(d.id)?answerText(d.id):'';el.classList.toggle('done',!!ans&&!/^미정/.test(ans));el.classList.toggle('skip',/^미정/.test(ans));el.classList.toggle('current',d===cur);el.classList.toggle('sel',d.id===mapSel);
+      const b=mk('button','nstep');b.type='button';b.title=ans?`${d.question}\n→ ${ans}`:d.question;b.setAttribute('aria-pressed',String(d.id===mapSel));b.append(mk('b','',d.title),mk('span','',ans||'아직 답하지 않았어요'));b.onclick=()=>{mapSel=d.id===mapSel?'':d.id;renderMap();};el.append(b);
+      if(ans){const x=mk('button','ndel','✕');x.type='button';x.disabled=busy;x.setAttribute('aria-label',`${d.title} 답변 지우기`);x.onclick=()=>removeAnswer(d.id);el.append(x);}}
+    host.append(el);});
+  const dock=$('map-detail'),sel=definitions.find(x=>x.id===mapSel);dock.replaceChildren();dock.hidden=!sel||!isVisible(sel);if(!dock.hidden)dock.append(buildMapDetail(sel));
   if(mapStepSeen!==state.step){mapStepSeen=state.step;mapFocus();}
 }
 function buildMapDetail(d){
