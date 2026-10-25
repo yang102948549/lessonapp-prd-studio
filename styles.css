@@ -166,3 +166,11 @@
 #steps button.current .step-label{text-decoration:none}
 #steps button.current.done{color:var(--fg)}
 #steps button.current .step-dot{background:var(--accent);border-color:var(--accent);color:var(--inverse)}
+
+/* 어두운 배경 버튼은 호버 때도 흰 글자가 보이도록 */
+.t-root-btn:hover{background:#3b3b3b;color:var(--inverse)}
+.t-step.current>.t-row:hover{background:#3b3b3b}
+.t-step.current .t-step-btn:hover,.t-step.current .t-del:hover{background:transparent;color:var(--inverse)}
+.t-step.current .t-step-btn:hover b,.t-step.current .t-step-btn:hover span{color:var(--inverse)}
+.chip[aria-pressed=true]:hover,.chip[aria-pressed=true]+.chip-edit-btn:hover{background:#3b3b3b;color:var(--inverse);border-color:#3b3b3b}
+#steps button.current:hover .step-dot{background:var(--accent);color:var(--inverse)}
