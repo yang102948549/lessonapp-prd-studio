@@ -234,12 +234,14 @@ async function callModel(m, system, prompt, schema, maxTokens = 4096) {
     throw error;
   } finally { clearTimeout(timeout); }
 }
-function altModels() { return modelList.map(x => x.id).filter(id => id !== model && /flash/.test(id) && !/image|tts|live|thinking/.test(id)).sort((a, b) => /preview|exp/.test(a) - /preview|exp/.test(b)).slice(0, 2); }
+const modelVer = id => Number((id.match(/gemini-(\d+(?:\.\d+)?)/) || [])[1]) || 0;
+/* 자동 전환 후보: 같은 세대 이상의 Flash 계열만(종료된 2.x 모델은 제외), 정식 버전을 먼저 */
+function altModels() { const base = modelVer(model); return modelList.map(x => x.id).filter(id => id !== model && /flash/.test(id) && !/image|tts|live|thinking/.test(id) && modelVer(id) >= Math.max(3, base)).sort((a, b) => /preview|exp/.test(a) - /preview|exp/.test(b) || modelVer(b) - modelVer(a)).slice(0, 2); }
 async function requestAI(...args) {
   try { return await callModel(model, ...args); }
   catch (error) {
     if (!error.retryOther) throw error;
-    for (const alt of altModels()) { try { const out = await callModel(alt, ...args); toast(`${model} 모델이 혼잡해서 ${alt} 모델로 답했어요.`); return out; } catch (e2) { if (!e2.retryOther) throw e2; } }
+    for (const alt of altModels()) { try { const out = await callModel(alt, ...args); toast(`${model} 모델이 혼잡해서 ${alt} 모델로 답했어요.`); return out; } catch {} }
     throw error;
   }
 }
