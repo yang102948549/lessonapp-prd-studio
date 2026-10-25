@@ -189,3 +189,14 @@
 .t-part-label{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;font-size:14px;font-weight:700;background:var(--bg);border:1px solid var(--border);line-height:1.4}
 .t-part.complete>.t-part-label{border-color:#718b7c}
 .t-part .cnt{color:var(--muted);font-weight:400;font-size:12px;white-space:nowrap}
+
+/* 사이드바 상단 안내 · 프로젝트 섹션의 새 프로젝트 */
+.brand{margin-bottom:14px}
+.side-intro{margin:0 12px 6px}
+.side-title{margin:0 0 6px;font-size:15px;font-weight:650;line-height:1.45;letter-spacing:-.3px}
+.side-sub{margin:0;font-size:12px;line-height:1.6;color:var(--muted)}
+.sidebar-label{margin-top:22px}
+.new-project{display:block;width:calc(100% - 4px);margin:4px 2px 2px;text-align:left;background:transparent;border:1px dashed var(--border);color:var(--muted);padding:8px 12px;font-size:14px}
+.new-project:hover{background:var(--surface);color:var(--fg)}
+@media(max-width:920px){.side-intro,.new-project{display:none}}
+

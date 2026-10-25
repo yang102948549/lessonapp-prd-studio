@@ -204,7 +204,7 @@ function render(){
   $('send').disabled=busy;$('ai-refine').disabled=busy;$('new-chat').disabled=busy;
   $('chat-input').disabled=busy;$('edit-doc').disabled=busy;
   $('cancel-edit').hidden=!def||!isAnswered(def.id)||firstUnanswered()===state.step;$('cancel-edit').disabled=busy;
-  $('intro').hidden=Object.keys(state.answers).some(k=>isAnswered(k));renderStackCard(def);renderMap();renderUsage();
+  renderStackCard(def);renderMap();renderUsage();
   renderDocument();
 }
 function applyAnswer(def,value){
