@@ -188,10 +188,11 @@ globalThis.Planning = (() => {
 
     step('selfops','운영 비용',6,'앱을 운영하는 데 비용을 쓸 수 있나요?','저장 공간이나 AI를 쓰면 서비스 가입과 설정이 필요하고, 일부는 무료 한도를 넘으면 요금이 나와요. 무료 범위 안에서 만들지, 비용을 쓸 수 있는지 알려 주세요.',['무료만 사용 · 무료 한도 안에서만 만들기','월 몇천 원 정도의 소액 유료도 괜찮음','학교·기관의 예산이나 계정을 쓸 수 있음','아직 모르겠음 · 무료 범위에서 먼저 시작']),
     step('upkeep','만든 뒤 관리',6,'만든 뒤 고치거나 관리는 누가 하나요?','오류를 고치거나 내용을 바꿀 때를 생각해요. AI 코딩 도구에 다시 요청하면 직접 고칠 수도 있어요.',['내가 직접 · AI 도구에 요청해 고치기','한 번 만들고 거의 손대지 않을 예정','동료 교사나 담당자가 함께 관리','학기마다 자료·문항만 바꿔 다시 쓸 예정']),
-    step('exclusions','첫 버전의 범위',6,'첫 버전에서 제외할 기능은 무엇인가요?','필요하지 않은 기능을 명시하면 실제 개발 범위가 선명해져요.',['회원가입·로그인 제외','점수·순위 경쟁 제외','교사용 관리 화면 제외','실시간 학급 집계 제외','서술형 자동 채점 제외','학생 활동 중 외부 AI 호출 제외','사진·파일 업로드 제외','제외할 기능은 직접 정하기'],{multi:true}),
-    step('stack','기술 구성',6,'지금까지의 답으로 보면 이런 구성이 어울려요. 어떻게 할까요?','프론트엔드(화면)·백엔드(저장·서버)·배포(공개 방법)를 학생 경험에서 정한 답으로 골랐어요. 추천을 그대로 쓰거나 다른 구성으로 바꿀 수 있어요.',[],{}),
+    step('exclusions','이번에 미룰 기능',6,'이번 첫 버전에서는 만들지 않을 기능이 있나요?','떠오르지만 지금은 필요 없는 기능을 미리 정해 두면, 개발할 때 범위가 넓어지지 않아요. 이미 정한 답과 겹치는 보기는 숨겨요.',['회원가입·로그인 제외','점수·순위 경쟁 제외','교사용 관리 화면 제외','실시간 학급 집계 제외','학생 활동 중 외부 AI 호출 제외','사진·파일 업로드 제외','학생끼리 채팅·댓글 제외','학습 결과 통계·분석 화면 제외','알림(푸시·이메일) 제외'],{multi:true}),
+    step('stack','기술 구성',6,'추천 구성을 그대로 쓸까요, 다른 구성을 고를까요?','지금까지의 답으로 화면(프론트엔드), 저장·서버(백엔드), 공개 방법(배포)을 추천했어요. 추천 근거와 주의점을 읽어 보고 고르세요.',[],{}),
     step('acceptance','완료 확인',6,'어떤 상황을 확인하면 사용할 준비가 됐다고 볼까요?','학생의 실제 행동으로 확인 가능한 기준을 고르거나 적어주세요.',['처음부터 결과 확인까지 안내만 보고 진행 가능','오답 수정 후 맞은 선택과 읽은 자료가 유지','빈 입력·초과 입력을 안내하고 수정 결과가 갱신','PC·태블릿의 가로·세로 화면에서 잘림 없이 조작','새로고침·초기화가 정한 저장 규칙대로 동작','학생이 제출한 결과가 정한 저장 위치(교사 화면·시트 등)에 나타남','여러 학생이 동시에 접속해도 결과가 섞이거나 사라지지 않음','정한 활동 시간 안에 교사 시연으로 전 과정 확인'],{multi:true}),
-    step('project','이름과 추가 고려사항',6,'웹앱 이름과 마지막으로 남길 요청이 있나요?','가칭, 특별한 운영 조건, 중복 접속이나 네트워크 끊김 처리 등을 자유롭게 적어주세요.',['가칭은 AI가 제안 · 추가 요청 없음','이름은 나중에 결정 · 중복 접속과 재접속 정책 검토 필요'],{placeholder:'예: 가칭 생각 모으기. 같은 모둠 코드로 다시 들어오면 기존 활동을 이어가면 좋겠어요.'})
+    step('extra','마지막 요청',6,'개발할 때 꼭 챙겨야 할 요청이 더 있나요?','수업 중 생길 수 있는 상황을 미리 정해 두면 좋아요. 해당되는 것을 모두 고르세요.',['추가 요청 없음','같은 코드로 다시 들어오면 하던 활동을 이어서 할 수 있게','네트워크가 끊겨도 입력한 내용이 사라지지 않게','같은 학생이 두 번 접속해도 결과가 중복되지 않게','수업이 끝나면 교사가 한 번에 초기화할 수 있게'],{multi:true,placeholder:'예: 수업 중 새로고침해도 이전 답이 남아 있으면 좋겠어요.'}),
+    step('project','웹앱 이름',6,'웹앱 이름을 정할까요?','수업에서 학생에게 보여 줄 이름이에요. 나중에 바꿔도 돼요.',['가칭은 AI가 제안해 주세요','이름은 나중에 직접 정할게요'],{placeholder:'예: 생각 모으기'}),
   ];
   const value=(answers,id)=>Array.isArray(answers[id])?answers[id].join(' / '):answers[id]||'';
   const stepById=id=>steps.find(s=>s.id===id);
@@ -220,7 +221,7 @@ globalThis.Planning = (() => {
     const shared=needsShare(a),rt=isRealtime(a),files=/올림/.test(val(a,'files')),ai=/학생이 활동 중 AI|AI가 피드백/.test(val(a,'aiuse')),
       scale=/학교 전체/.test(value(a,'participants'))?'school':/여러 학급/.test(value(a,'participants'))?'multi':'single',
       port=/포트폴리오/.test(val(a,'retention'))||/누적/.test(value(a,'results')),sheet=/구글 시트|CSV/.test(val(a,'export')),
-      offline=/오프라인/.test(value(a,'network')),google=/구글 계정으로 로그인/.test(val(a,'identity')),code=/개별 참여코드|입장코드|모둠 코드/.test(val(a,'identity')),free=/무료만/.test(value(a,'selfops'));
+      offline=/오프라인/.test(value(a,'network')),google=/구글 계정으로 로그인/.test(val(a,'identity')),code=/개별 참여코드|입장코드|모둠 코드/.test(val(a,'identity')),free=/무료만|무료 범위에서/.test(value(a,'selfops'));
     const need=shared||rt;let id;
     if(offline)id='static';
     else if(need&&(files||port||scale==='school'))id='supabase';
@@ -304,6 +305,11 @@ globalThis.Planning = (() => {
         return sh?list:keep(/참여 현황|결과를 모아/);
       case 'teacherView':
         return sh?list:keep(/제출|모아보기|CSV|키워드|투표|차트|숨기기/);
+      case 'exclusions':{const tch=val(a,'teacher');let o=list;const drop=re=>{o=o.filter(x=>!re.test(lab(x)));};
+        if(/구글 계정으로 로그인/.test(val(a,'identity')))drop(/로그인 제외/);if(tch&&!/별도 관리 화면 없음/.test(tch))drop(/관리 화면 제외/);if(isRealtime(a))drop(/실시간 학급 집계/);
+        if(/학생이 활동 중 AI|AI가 피드백/.test(val(a,'aiuse')))drop(/외부 AI 호출 제외/);if(/올림/.test(val(a,'files')))drop(/업로드 제외/);if(/친구 의견/.test(inter))drop(/채팅·댓글/);return o;}
+      case 'extra':
+        return sh?list:keep(/다시 들어오면|두 번 접속/);
       case 'acceptance':
         return sh?list:keep(/제출한 결과가|동시에 접속/);
       default:return list;
@@ -318,7 +324,7 @@ globalThis.Planning = (() => {
     ['활동 구성·실행 방식과 진행 규칙',['activity','method','story','materials','flow','control','rules','feedback']],
     ['핵심 구현 기능: 교사 화면과 학생 화면',['teacher','teacherView','interaction','input','output','features']],
     ['디자인 및 화면 스타일',['design','visual']],
-    ['운영 조건·기술 구성',['results','live','retention','files','aiuse','export','selfops','upkeep','stack','exclusions']],
+    ['운영 조건·기술 구성',['results','live','retention','files','aiuse','export','selfops','upkeep','stack','exclusions','extra']],
     ['완료 기준',['acceptance']]
   ];
   function visibleSteps(answers){return steps.filter(s=>!s.when||s.when(answers));}
@@ -331,7 +337,7 @@ globalThis.Planning = (() => {
     if(!shared&&answers.results&&/참여 현황|결과를 모아|공개 여부/.test(v('teacher')))issues.push('교사가 학생 결과를 보려면 “결과물의 행방”에서 “교사가 모아서 봄”을 선택해야 해요.');
     if(/수업이 끝나면 바로 삭제/.test(v('retention'))&&/누적|다음 시간/.test(v('results')))issues.push('“수업 끝나면 삭제”와 “다음 시간에도 이어서 누적”이 서로 충돌해요.');
     if(ai&&/외부 AI 호출 제외/.test(v('exclusions')))issues.push('학생 활동 중 AI 사용과 “외부 AI 호출 제외”가 충돌해요.');
-    if(ai&&/무료만/.test(v('selfops')))issues.push('학생이 직접 AI를 쓰면 무료 호출 한도(분당 요청 수)에 걸릴 수 있어요. 미리 만든 자료로 대체할 수 있는지 확인해 주세요.');
+    if(ai&&/무료만|무료 범위에서/.test(v('selfops')))issues.push('학생이 직접 AI를 쓰면 무료 호출 한도(분당 요청 수)에 걸릴 수 있어요. 미리 만든 자료로 대체할 수 있는지 확인해 주세요.');
     if(rt&&/실시간 학급 집계 제외/.test(v('exclusions')))issues.push('실시간 공유·제어와 “실시간 학급 집계 제외”가 충돌해요.');
     if(/사진이나 그림|파일을 올림/.test(v('files'))&&/사진·파일 업로드 제외/.test(v('exclusions')))issues.push('사진·파일 업로드와 “업로드 제외” 중 하나를 선택해 주세요.');
     if(stack&&stack.id==='static'&&(shared||rt))issues.push('서버 없는 구성(정적 웹페이지)으로는 결과를 모으거나 실시간으로 공유할 수 없어요.');
