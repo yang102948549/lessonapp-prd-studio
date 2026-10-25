@@ -66,11 +66,11 @@ D. 어떤 기능이 필요할까요? — 반드시 필요한 핵심 기능 최�
 - 이번 대화로 새로 알게 된 내용이 있는 섹션만 updates에 담습니다. 변화가 없으면 updates는 빈 배열입니다.
 - updates의 markdown은 해당 섹션의 "전체 새 내용"입니다. 현재 PRD에 이미 있는 내용(교사가 직접 고친 것 포함)은 유지하고 새 내용을 합쳐 쓰세요.
 - 교사가 말한 내용만 사실로 적습니다. 당신이 제안한 것은 "[제안]"을 붙이고, 교사가 아직 확정하지 않았으면 'open' 섹션에도 기록합니다.
-- 간결한 짧은 글머리표로 씁니다. 개발 AI가 읽고 바로 구현할 수 있도록 화면·버튼·동작·조건을 구체적으로 적으세요.
+- 이 기획서가 곧 최종 PRD입니다. 따로 상세 PRD를 만들지 않으니, 각 섹션을 개발 AI가 읽고 바로 구현할 수 있을 만큼 구체적으로(화면 요소·버튼·동작·조건·실제 문구·예외 처리) 짧은 글머리표로 쓰세요. 교사가 말하지 않은 보충은 "[제안]"으로 구분합니다.
 - 섹션 id는 다음 중에서만 사용하세요: ${sections.map(s => s.id).join(', ')}.
 
 [ready 판단]
-A~D(수업 맥락, 학습 목표, 학생 행동, 사용 흐름, 핵심 기능), 실제 콘텐츠 또는 그 형식, 규칙이 대체로 채워져 개발 AI에게 넘겨도 되겠다 싶으면 ready를 true로 하고, reply 끝에 "상세 PRD를 만들어도 좋겠어요"라고 알려 주세요. 그 전에는 false입니다.
+A~D(수업 맥락, 학습 목표, 학생 행동, 사용 흐름, 핵심 기능), 실제 콘텐츠 또는 그 형식, 규칙이 대체로 채워져 개발 AI에게 넘겨도 되겠다 싶으면 ready를 true로 하고, reply 끝에 "기획서를 복사해 개발 AI에 넣어도 좋겠어요"라고 알려 주세요. 그 전에는 false입니다.
 
 [응답 형식]
 반드시 JSON 하나만 출력합니다: {"reply": string, "chips": string[], "updates": [{"id": string, "markdown": string}], "ready": boolean, "title": string, "focus": string}
@@ -82,23 +82,6 @@ focus는 이번 답변의 마지막 질문이 다루는 PRD 섹션 id입니다(�
     const current = sections.map(s => `### ${s.id} (${s.title})\n${(doc[s.id] || '').trim() || '(비어 있음)'}`).join('\n\n');
     const history = messages.slice(-30).map(m => `${m.role === 'user' ? '교사' : '도우미'}: ${m.text}`).join('\n\n');
     return `[현재 PRD 초안]\n${current}\n\n[지금까지의 대화]\n${history}\n\n위 대화의 마지막 교사 메시지에 답하세요.`;
-  }
-
-  const finalRole = `당신은 "수업 웹앱 개발 도우미"입니다. 교사와의 대화와 PRD 초안을 바탕으로, 개발 AI(Claude, Gemini, Cursor 등)가 그대로 읽고 웹앱을 만들 수 있는 상세 PRD를 한국어 마크다운으로 작성합니다.
-
-[작성 규칙]
-- 교사가 말한 내용은 그대로 살리고, 당신이 보충한 내용에는 "[제안·교사 검토 필요]"를 붙여 구분합니다. 근거 없이 지어내지 마세요.
-- 구성: 1. 도구 개요(이름·필요한 이유) / 2. 수업 맥락과 학습 목표 / 3. 학생의 학습 행동 / 4. 학생 사용 흐름(단계별 화면과 조작) / 5. 핵심 기능(최대 3개: 동작·교육적 이유)과 이번에 넣지 않을 것 / 6. 화면별 요소·버튼·동작(학생·교사) / 7. 콘텐츠와 데이터(실제 문항·본문 원문, 저장할 정보) / 8. 규칙·피드백·예외 처리 / 9. 사용 환경·접속·개인정보 / 10. 디자인 / 11. 저장·배포·운영 / 12. 완료 기준(확인 가능한 체크리스트) / 13. 미정 사항.
-- 대화에서 정해지지 않은 부분은 "[미정]"으로 남기고 13번에 모읍니다.
-- 마지막에 "개발 AI에게 붙여 넣을 첫 지시문" 한 단락(이 PRD를 읽고 단계적으로 구현해 달라는 요청)을 덧붙입니다.
-- 교사가 읽어도 이해되는 쉬운 말을 쓰되, 개발 AI가 모호함 없이 구현할 만큼 구체적으로 적습니다.
-
-[응답 형식] JSON 하나: {"prd": string}`;
-
-  function finalPrompt(messages, doc, name) {
-    const current = sections.map(s => `### ${s.title}\n${(doc[s.id] || '').trim() || '(비어 있음)'}`).join('\n\n');
-    const history = messages.slice(-60).map(m => `${m.role === 'user' ? '교사' : '도우미'}: ${m.text}`).join('\n\n');
-    return `앱 이름: ${name}\n\n[PRD 초안]\n${current}\n\n[대화 기록]\n${history}\n\n위 내용으로 상세 PRD를 작성하세요.`;
   }
 
   /* API 호출 없이 보여 주는 첫 안내 */
@@ -117,7 +100,6 @@ focus는 이번 답변의 마지막 질문이 다루는 PRD 섹션 id입니다(�
     reply:{type:'STRING'}, chips:{type:'ARRAY', items:{type:'STRING'}},
     updates:{type:'ARRAY', items:{type:'OBJECT', properties:{id:{type:'STRING'}, markdown:{type:'STRING'}}, required:['id','markdown']}},
     ready:{type:'BOOLEAN'}, title:{type:'STRING'}, focus:{type:'STRING'}}, required:['reply','chips','updates','ready','title','focus']};
-  const finalSchema = {type:'OBJECT', properties:{prd:{type:'STRING'}}, required:['prd']};
 
-  return {sections, parts, role, chatPrompt, finalRole, finalPrompt, welcome, chatSchema, finalSchema};
+  return {sections, parts, role, chatPrompt, welcome, chatSchema};
 })();

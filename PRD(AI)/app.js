@@ -1,7 +1,7 @@
 const $ = id => document.getElementById(id);
 const PROJECTS_KEY = 'oni.prdai.projects.v1', DEFAULT_NAME = '나의 수업 웹앱', MAX_PROJECTS = 20;
 const SECTIONS = Prompt.sections;
-const fresh = () => ({version:1, messages:[], doc:{}, chips:Prompt.welcome.chips.slice(), ready:false, final:'', view:'live', focus:''});
+const fresh = () => ({version:1, messages:[], doc:{}, chips:Prompt.welcome.chips.slice(), ready:false, focus:''});
 let projects = [], currentId = '', state = fresh(), apiKey = '', model = 'gemini-3.8-flash', modelList = [], busy = false, toastTimer, editingId = '', mapOpen = new Set(['A']), mapSel = '', mapSeen = '';
 const uid = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -101,14 +101,8 @@ function renderDocument(flashIds = []) {
   const filled = SECTIONS.filter(s => sectionBody(s.id)).length;
   $('progress').style.width = Math.round(filled / SECTIONS.length * 100) + '%';
   $('progress-text').textContent = `${SECTIONS.length}개 항목 중 ${filled}개가 채워졌어요`;
-  $('view-live').setAttribute('aria-pressed', String(state.view === 'live')); $('view-final').setAttribute('aria-pressed', String(state.view === 'final'));
-  $('make-final').classList.toggle('ready', state.ready && !busy);
+  $('copy-doc').classList.toggle('ready', state.ready && !busy);
   const root = $('prd-preview'); root.replaceChildren();
-  if (state.view === 'final') {
-    $('progress-text').textContent = state.final ? '상세 PRD (AI가 대화를 바탕으로 작성)' : '';
-    if (state.final) root.append(renderMd(state.final)); else { const p = document.createElement('p'); p.className = 'empty'; p.textContent = '아직 만들지 않았어요. 대화가 어느 정도 쌓이면 아래 [상세 PRD 만들기]를 눌러 주세요.'; root.append(p); }
-    return;
-  }
   SECTIONS.forEach(s => {
     const sec = document.createElement('div'); sec.className = 'prd-section' + (flashIds.includes(s.id) ? ' flash' : ''); sec.id = 'sec-' + s.id;
     const h = document.createElement('h3'); h.append(document.createTextNode(s.title));
@@ -182,7 +176,7 @@ function updateConnection() {
 }
 function render(flashIds) {
   renderProjects(); renderMap(); renderMessages(); renderChips(); renderDocument(flashIds); updateConnection();
-  $('send').disabled = busy; $('make-final').disabled = busy; $('chat-input').disabled = busy; $('new-project').disabled = busy;
+  $('send').disabled = busy; $('chat-input').disabled = busy; $('new-project').disabled = busy;
 }
 function scrollChat() { requestAnimationFrame(() => { const c = $('chat-scroll'); c.scrollTo({top:c.scrollHeight, behavior:'smooth'}); }); }
 function panel(name) {
@@ -286,24 +280,7 @@ function send(text) {
 $('composer').onsubmit = e => { e.preventDefault(); if (send($('chat-input').value)) $('chat-input').value = ''; };
 $('chat-input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('composer').requestSubmit(); } };
 
-async function makeFinal() {
-  if (busy) return;
-  if (!apiKey) { needKey('상세 PRD 생성에는 API 키가 필요해요.'); return; }
-  if (!state.messages.length) { toast('먼저 도우미와 대화를 나눠 주세요.'); return; }
-  busy = true; state.view = 'final'; $('chat-notice').textContent = '상세 PRD를 작성하고 있어요… (30초쯤 걸릴 수 있어요)'; render(); panel('document');
-  try {
-    const json = parseJSON(await requestAI(Prompt.finalRole, Prompt.finalPrompt(state.messages, state.doc, currentProject().name), Prompt.finalSchema, 16000));
-    const prd = String(json.prd || '').trim(); if (prd.length < 200) throw new Error('상세 PRD가 제대로 만들어지지 않았어요. 다시 시도해 주세요.');
-    state.final = redact(prd); $('chat-notice').textContent = '';
-    state.messages.push({role:'assistant', text:'상세 PRD를 만들었어요. 오른쪽 [상세 PRD]에서 확인하고, 복사하거나 MD로 내려받아 개발 AI에 붙여 넣으세요. [제안·교사 검토 필요] 표시는 꼭 확인해 주세요. 바꾸고 싶은 점은 여기서 이야기해 주세요.'});
-    state.chips = ['핵심 기능 설명을 더 구체적으로 써 주세요', '실제 문항과 본문 예시를 더 채워 주세요', '첫 버전에서 뺄 기능을 다시 정리해 주세요'];
-  } catch (error) { $('chat-notice').textContent = error.message; }
-  finally { busy = false; persist(); render(); scrollChat(); }
-}
-const docText = () => state.view === 'final' && state.final ? state.final : '# ' + currentProject().name + ' PRD\n\n' + SECTIONS.map((s, i) => `## ${s.title}\n${sectionBody(s.id) || '[미정]'}`).join('\n\n');
-$('make-final').onclick = makeFinal;
-$('view-live').onclick = () => { state.view = 'live'; persist(); renderDocument(); };
-$('view-final').onclick = () => { state.view = 'final'; persist(); renderDocument(); };
+const docText = () => '# ' + currentProject().name + ' PRD\n\n' + SECTIONS.map((s, i) => `## ${s.title}\n${sectionBody(s.id) || '[미정]'}`).join('\n\n');
 $('copy-doc').onclick = async () => { try { await navigator.clipboard.writeText(docText()); toast('기획서를 복사했어요.'); } catch { toast('복사 권한이 없어요. MD 다운로드를 사용해 주세요.'); } };
 function download(blob, name) { const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 $('download-doc').onclick = () => download(new Blob([docText()], {type:'text/markdown;charset=utf-8'}), (currentProject().name.replace(/[\\/:*?"<>|]/g, '') || 'PRD') + '-PRD.md');
