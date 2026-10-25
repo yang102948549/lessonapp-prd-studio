@@ -4,52 +4,54 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="대화하며 만드는 수업 웹앱 PRD">
   <meta name="referrer" content="no-referrer">
-  <title>Oni Studio · AI 대화형 PRD</title>
-  <link rel="stylesheet" href="styles.css?v=2"><script defer src="prompt.js?v=2"></script><script defer src="app.js?v=2"></script>
+  <title>Oni Studio</title>
+  <link rel="stylesheet" href="styles.css?v=4"><script defer src="prompt.js?v=4"></script><script defer src="app.js?v=4"></script>
 </head>
 <body>
-<header class="topbar">
-  <a class="brand" href="./"><span class="mark" aria-hidden="true"></span>Oni Studio <small>AI 대화형</small></a>
-  <div class="project-bar">
-    <select id="project-select" aria-label="프로젝트 선택"></select>
-    <button id="rename-project" type="button" title="이름 바꾸기">이름</button>
-    <button id="new-project" type="button">＋ 새 프로젝트</button>
-    <button id="delete-project" type="button" title="이 프로젝트 삭제">삭제</button>
+<aside class="sidebar">
+  <a class="brand" href="./"><span class="mark" aria-hidden="true"></span>Oni Studio</a>
+  <div class="side-intro"><p class="side-title">말하듯 적으면,<br>AI가 이어서 묻고 제안해요.</p><p class="side-sub">추천 칩을 눌러도, 직접 써도 좋아요. 대화가 쌓이면 기획서가 완성됩니다.</p></div>
+  <button class="sidebar-label sb-toggle" data-target="projects-body" aria-expanded="true" type="button">프로젝트</button>
+  <div id="projects-body"><div id="project-list" class="project-list"></div><button id="new-project" class="new-project" type="button">＋ <span>새 프로젝트</span></button></div>
+  <button class="sidebar-label steps-label sb-toggle" data-target="steps" aria-expanded="true" type="button">현재 단계</button><nav id="steps" aria-label="기획 단계"></nav>
+  <footer class="site-footer">© 2026 Onischool by Oniaby</footer>
+</aside>
+<main>
+  <header class="topbar"><div><button id="project-title" class="title-button" title="클릭하여 이름 바꾸기">나의 수업 웹앱</button><span class="breadcrumb"> / PRD 만들기</span></div><div class="top-actions"><span id="save-status">브라우저에 저장됨</span><button id="panel-toggle" class="icon-button" type="button">지도·기획서·설정</button></div></header>
+  <div class="workspace">
+    <section class="chat-panel" aria-label="수업 웹앱 개발 도우미와 대화">
+      <div class="chat-scroll" id="chat-scroll"><div class="conversation"><div id="messages" role="log" aria-live="polite"></div></div></div>
+      <div class="composer-area">
+        <div id="chips" class="chips" aria-label="추천 답변"></div>
+        <div id="chat-notice" role="status"></div>
+        <form id="composer" class="composer">
+          <label for="chat-input" class="sr-only">도우미에게 말하기</label>
+          <textarea id="chat-input" rows="2" maxlength="6000" placeholder="만들고 싶은 수업 도구를 편하게 이야기해 주세요"></textarea>
+          <div class="composer-bottom"><span id="mode-label"><i></i> <span id="mode-text">AI 연결 필요</span></span><div><span class="keyboard-hint">Enter 전송 · Shift+Enter 줄바꿈</span><button id="send" type="submit" aria-label="보내기">↑</button></div></div>
+        </form>
+      </div>
+    </section>
+    <aside class="detail-panel" id="detail-panel" aria-label="마인드맵, 기획서, 설정">
+      <div class="panel-tabs" role="tablist"><button id="map-tab" role="tab" aria-selected="true"><svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 12H12c2 0 3-1 4-4M12 12c2 0 3 1 4 4"/></svg> 마인드맵</button><button id="document-tab" role="tab" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg> 기획서</button><button id="settings-tab" role="tab" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg> 설정</button></div>
+      <section id="map-panel" role="tabpanel" aria-labelledby="map-tab"><div class="map-toolbar"><span id="map-summary"></span><span class="map-tools"><button id="map-expand" class="text-button">모두 펼치기</button><button id="map-collapse" class="text-button">현재만 보기</button></span></div><div class="map-legend"><span><i class="lg done"></i>채워짐</span><span><i class="lg current"></i>지금 이야기 중</span><span><i class="lg todo"></i>아직</span></div><div class="map-scroll" id="map-scroll"><div id="map-canvas" class="map-canvas"></div></div><p class="map-help">항목을 누르면 내용이 열리고 바로 고칠 수 있어요 · 대화하면 AI가 알아서 채워 줘요</p></section>
+      <section id="document-panel" role="tabpanel" aria-labelledby="document-tab" hidden>
+        <div class="document-toolbar"><span><i class="live-dot"></i> 대화에 따라 실시간으로 채워져요</span><span class="view-switch"><button id="view-live" aria-pressed="true">실시간 초안</button><button id="view-final" aria-pressed="false">상세 PRD</button></span></div>
+        <div class="document-scroll"><div class="paper"><h2 id="doc-title">나의 수업 웹앱</h2><div class="progress-track"><span id="progress"></span></div><p id="progress-text" class="muted small"></p><div id="prd-preview"></div></div></div>
+        <div class="document-actions"><button id="copy-doc">복사</button><button id="download-doc">↓ MD</button><button id="make-final" class="primary">✧ 상세 PRD 만들기</button></div>
+      </section>
+      <section id="settings-panel" role="tabpanel" aria-labelledby="settings-tab" hidden>
+        <h2>설정</h2>
+        <div class="field-block"><label for="api-key">Gemini API 키</label><div class="inline-input"><input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="발급받은 API 키를 붙여넣으세요"><button id="toggle-key" type="button">보기</button></div>
+          <label for="model">사용할 모델</label><select id="model" disabled><option value="gemini-3.8-flash">연결 후 선택할 수 있어요</option></select>
+          <div class="key-actions"><button id="connect-key" class="primary" type="button">연결 확인</button><button id="remove-key" type="button">키 삭제</button></div><p id="key-status" role="status"></p>
+          <p class="field-help">모델이 혼잡하면 목록의 다른 Flash 모델로 자동 전환해 한 번 더 시도해요. 키는 이 탭의 메모리에만 있고 새로고침하면 다시 입력해야 해요. 대화·기획서는 이 브라우저에 자동 저장되고(서버로 보내지 않아요), 답변을 만들기 위해 대화 내용은 Google Gemini로 전송돼요.</p>
+          <p id="usage-info" class="field-help"></p></div>
+        <div class="guide"><h3>API 키가 처음이신가요?</h3><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio에서 키 발급받기 ↗</a><ol><li>Google 계정으로 로그인하세요.</li><li><b>API 키 만들기(Create API key)</b>를 선택하세요.</li><li>키를 복사해 위 입력란에 붙여넣고 <b>연결 확인</b>을 누르세요.</li></ol><p>학교 계정은 관리자 설정에 따라 발급이 제한될 수 있어요.</p></div>
+        <div class="field-block backup"><b>프로젝트 백업</b><small>프로젝트는 이 브라우저에만 저장돼요. 파일로 내보내 두면 다른 기기에서 불러올 수 있어요. 최대 20개까지 저장해요.</small><div class="key-actions"><button id="export-projects" type="button">내보내기</button><button id="import-projects" type="button">불러오기</button><input id="import-file" type="file" accept="application/json,.json" hidden></div></div>
+      </section>
+    </aside>
   </div>
-  <div class="top-actions"><span id="save-status">브라우저에 저장됨</span><button id="panel-toggle" type="button">기획서·설정</button></div>
-</header>
-<div class="workspace">
-  <section class="chat-panel" aria-label="수업 웹앱 개발 도우미와 대화">
-    <div class="chat-scroll" id="chat-scroll"><div class="conversation"><div id="messages" role="log" aria-live="polite"></div></div></div>
-    <div class="composer-area">
-      <div id="chips" class="chips" aria-label="추천 답변"></div>
-      <div id="chat-notice" role="status"></div>
-      <form id="composer" class="composer">
-        <label for="chat-input" class="sr-only">도우미에게 말하기</label>
-        <textarea id="chat-input" rows="2" maxlength="6000" placeholder="만들고 싶은 수업 도구를 편하게 이야기해 주세요"></textarea>
-        <div class="composer-bottom"><span id="mode-label"><i></i> <span id="mode-text">AI 연결 필요</span></span><div><span class="keyboard-hint">Enter 전송 · Shift+Enter 줄바꿈</span><button id="send" type="submit" aria-label="보내기">↑</button></div></div>
-      </form>
-    </div>
-  </section>
-  <aside class="detail-panel" id="detail-panel" aria-label="기획서와 설정">
-    <div class="panel-tabs" role="tablist"><button id="document-tab" role="tab" aria-selected="true">▤ 기획서</button><button id="settings-tab" role="tab" aria-selected="false">⚙ 설정</button></div>
-    <section id="document-panel" role="tabpanel" aria-labelledby="document-tab">
-      <div class="document-toolbar"><span><i class="live-dot"></i> 대화에 따라 실시간으로 채워져요</span><span class="view-switch"><button id="view-live" aria-pressed="true">실시간 초안</button><button id="view-final" aria-pressed="false">상세 PRD</button></span></div>
-      <div class="document-scroll"><div class="paper"><h2 id="doc-title">나의 수업 웹앱</h2><div class="progress-track"><span id="progress"></span></div><p id="progress-text" class="muted small"></p><div id="prd-preview"></div></div></div>
-      <div class="document-actions"><button id="copy-doc">복사</button><button id="download-doc">↓ MD</button><button id="make-final" class="primary">✧ 상세 PRD 만들기</button></div>
-    </section>
-    <section id="settings-panel" role="tabpanel" aria-labelledby="settings-tab" hidden>
-      <h2>설정</h2>
-      <div class="field-block"><label for="api-key">Gemini API 키</label><div class="inline-input"><input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="발급받은 API 키를 붙여넣으세요"><button id="toggle-key" type="button">보기</button></div>
-        <label for="model">사용할 모델</label><select id="model" disabled><option value="gemini-3.8-flash">연결 후 선택할 수 있어요</option></select>
-        <div class="key-actions"><button id="connect-key" class="primary" type="button">연결 확인</button><button id="remove-key" type="button">키 삭제</button></div><p id="key-status" role="status"></p>
-        <p class="field-help">키는 이 브라우저 탭의 메모리에만 있고, 새로고침하면 다시 입력해야 해요. 대화·기획서는 이 브라우저에 자동 저장돼요(서버로 보내지 않아요). 대화 내용은 답변을 만들기 위해 Google Gemini로 전송돼요.</p>
-        <p id="usage-info" class="field-help"></p></div>
-      <div class="guide"><h3>API 키가 처음이신가요?</h3><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio에서 키 발급받기 ↗</a><ol><li>Google 계정으로 로그인하세요.</li><li><b>API 키 만들기(Create API key)</b>를 선택하세요.</li><li>키를 복사해 위 입력란에 붙여넣고 <b>연결 확인</b>을 누르세요.</li></ol><p>무료 등급은 분당·하루 호출 수가 제한돼요. 가벼운 Flash 계열 모델을 고르면 여유가 생겨요. 학교 계정은 관리자 설정에 따라 발급이 제한될 수 있어요.</p></div>
-      <div class="field-block backup"><b>프로젝트 백업</b><small>프로젝트는 이 브라우저에만 저장돼요. 파일로 내보내 두면 다른 기기에서 불러올 수 있어요.</small><div class="key-actions"><button id="export-projects" type="button">내보내기</button><button id="import-projects" type="button">불러오기</button><input id="import-file" type="file" accept="application/json,.json" hidden></div></div>
-    </section>
-  </aside>
-</div>
+</main>
 <dialog id="modal" aria-labelledby="modal-title"><div class="modal-body"><h2 id="modal-title"></h2><p id="modal-msg" hidden></p><input id="modal-input" type="text" maxlength="40" autocomplete="off" hidden><div class="modal-actions"><button id="modal-cancel" type="button">취소</button><button id="modal-ok" type="button" class="primary">확인</button></div></div></dialog>
 <div id="toast" role="status"></div>
 </body></html>

@@ -20,6 +20,16 @@ globalThis.Prompt = (() => {
     {id:'open', title:'아직 정하지 않은 것', hint:'미정·고민 중인 사항, 다음에 물어볼 것'}
   ];
 
+  /* 왼쪽 '현재 단계'와 오른쪽 마인드맵이 쓰는 묶음 */
+  const parts = [
+    {id:'A', title:'A. 어떤 수업에서 사용할까요?', ids:['tool','context','why']},
+    {id:'B', title:'B. 학생이 무엇을 하게 할까요?', ids:['goal','action']},
+    {id:'C', title:'C. 학생은 어떤 순서로 사용할까요?', ids:['flow']},
+    {id:'D', title:'D. 어떤 기능이 필요할까요?', ids:['features','nongoals']},
+    {id:'E', title:'E. 세부 설계', ids:['teacher','content','rules','env','design','ops']},
+    {id:'F', title:'F. 마무리', ids:['done','open']}
+  ];
+
   const role = `당신은 "수업 웹앱 개발 도우미"입니다.
 
 [함께하는 사람]
@@ -63,8 +73,9 @@ D. 어떤 기능이 필요할까요? — 반드시 필요한 핵심 기능 최�
 A~D(수업 맥락, 학습 목표, 학생 행동, 사용 흐름, 핵심 기능), 실제 콘텐츠 또는 그 형식, 규칙이 대체로 채워져 개발 AI에게 넘겨도 되겠다 싶으면 ready를 true로 하고, reply 끝에 "상세 PRD를 만들어도 좋겠어요"라고 알려 주세요. 그 전에는 false입니다.
 
 [응답 형식]
-반드시 JSON 하나만 출력합니다: {"reply": string, "chips": string[], "updates": [{"id": string, "markdown": string}], "ready": boolean, "title": string}
-title은 앱을 부르기 좋은 짧은 이름(15자 이내)입니다. 아직 알 수 없으면 빈 문자열입니다.`;
+반드시 JSON 하나만 출력합니다: {"reply": string, "chips": string[], "updates": [{"id": string, "markdown": string}], "ready": boolean, "title": string, "focus": string}
+title은 앱을 부르기 좋은 짧은 이름(15자 이내)입니다. 아직 알 수 없으면 빈 문자열입니다.
+focus는 이번 답변의 마지막 질문이 다루는 PRD 섹션 id입니다(예: flow). 화면의 '현재 단계' 표시에 쓰입니다.`;
 
   /* 현재 PRD 상태와 대화 기록을 하나의 요청 본문으로 */
   function chatPrompt(messages, doc) {
@@ -105,8 +116,8 @@ title은 앱을 부르기 좋은 짧은 이름(15자 이내)입니다. 아직 �
   const chatSchema = {type:'OBJECT', properties:{
     reply:{type:'STRING'}, chips:{type:'ARRAY', items:{type:'STRING'}},
     updates:{type:'ARRAY', items:{type:'OBJECT', properties:{id:{type:'STRING'}, markdown:{type:'STRING'}}, required:['id','markdown']}},
-    ready:{type:'BOOLEAN'}, title:{type:'STRING'}}, required:['reply','chips','updates','ready','title']};
+    ready:{type:'BOOLEAN'}, title:{type:'STRING'}, focus:{type:'STRING'}}, required:['reply','chips','updates','ready','title','focus']};
   const finalSchema = {type:'OBJECT', properties:{prd:{type:'STRING'}}, required:['prd']};
 
-  return {sections, role, chatPrompt, finalRole, finalPrompt, welcome, chatSchema, finalSchema};
+  return {sections, parts, role, chatPrompt, finalRole, finalPrompt, welcome, chatSchema, finalSchema};
 })();

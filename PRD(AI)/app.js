@@ -1,8 +1,8 @@
 const $ = id => document.getElementById(id);
 const PROJECTS_KEY = 'oni.prdai.projects.v1', DEFAULT_NAME = '나의 수업 웹앱', MAX_PROJECTS = 20;
 const SECTIONS = Prompt.sections;
-const fresh = () => ({version:1, messages:[], doc:{}, chips:Prompt.welcome.chips.slice(), ready:false, final:'', view:'live'});
-let projects = [], currentId = '', state = fresh(), apiKey = '', model = 'gemini-3.8-flash', busy = false, toastTimer, editingId = '';
+const fresh = () => ({version:1, messages:[], doc:{}, chips:Prompt.welcome.chips.slice(), ready:false, final:'', view:'live', focus:''});
+let projects = [], currentId = '', state = fresh(), apiKey = '', model = 'gemini-3.8-flash', modelList = [], busy = false, toastTimer, editingId = '', mapOpen = new Set(['A']), mapSel = '', mapSeen = '';
 const uid = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const currentProject = () => projects.find(p => p.id === currentId);
@@ -124,21 +124,84 @@ function renderDocument(flashIds = []) {
     root.append(sec);
   });
 }
-function renderTopbar() {
-  const sel = $('project-select'); sel.replaceChildren();
-  projects.forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = p.name; sel.append(o); }); sel.value = currentId;
+const mk = (tag, cls = '', text = '') => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
+const isFilled = id => !!sectionBody(id);
+const sectionById = id => SECTIONS.find(s => s.id === id);
+const currentSection = () => (state.focus && sectionById(state.focus)) ? state.focus : (SECTIONS.find(s => !isFilled(s.id)) || {}).id || '';
+const partOf = id => Prompt.parts.find(p => p.ids.includes(id));
+function renderProjects() {
+  const list = $('project-list'); list.replaceChildren();
+  projects.forEach(p => {
+    const row = mk('div', 'project-row' + (p.id === currentId ? ' active' : ''));
+    const open = mk('button', 'project-open', p.name); open.type = 'button'; open.title = p.name; open.disabled = busy; if (p.id === currentId) open.setAttribute('aria-current', 'true'); open.onclick = () => switchProject(p.id);
+    const edit = mk('button', 'project-tool', '✎'); edit.type = 'button'; edit.setAttribute('aria-label', `${p.name} 이름 바꾸기`); edit.onclick = () => renameProject(p.id);
+    const del = mk('button', 'project-tool', '✕'); del.type = 'button'; del.setAttribute('aria-label', `${p.name} 삭제`); del.disabled = busy; del.onclick = () => deleteProject(p.id);
+    row.append(open, edit, del); list.append(row);
+  });
+  $('project-title').textContent = currentProject().name;
+}
+function renderSteps() {
+  const root = $('steps'); root.replaceChildren(); const cur = currentSection(), curPart = partOf(cur);
+  Prompt.parts.forEach(part => {
+    const members = part.ids.map(sectionById), done = members.filter(m => isFilled(m.id)).length;
+    const d = document.createElement('details'); d.open = curPart === part;
+    const sum = document.createElement('summary'); sum.textContent = `${part.title}  ${done}/${members.length}${done === members.length ? ' ✓' : ''}`; d.append(sum);
+    members.forEach(m => {
+      const b = mk('button', (m.id === cur ? 'current ' : '') + (isFilled(m.id) ? 'done' : '')); b.type = 'button'; b.title = m.hint;
+      b.append(mk('span', 'step-dot', isFilled(m.id) ? '✓' : ''), mk('span', 'step-label', m.title.replace(/^[A-Z]-\d+\.\s*/, '')));
+      b.onclick = () => { mapSel = m.id; mapOpen.add(partOf(m.id).id); panel('map'); renderMap(); };
+      d.append(b);
+    });
+    root.append(d);
+  });
+}
+function renderMap() {
+  const host = $('map-canvas'); host.replaceChildren(); const cur = currentSection(), curPart = partOf(cur);
+  if (curPart && curPart.id !== mapSeen) { mapOpen.add(curPart.id); mapSeen = curPart.id; }
+  const filled = SECTIONS.filter(s => isFilled(s.id)).length; $('map-summary').textContent = `${filled}/${SECTIONS.length} 항목이 채워졌어요`;
+  const rootUl = mk('ul', 'tree'), rootLi = mk('li', 't-root');
+  const rb = mk('button', 't-root-btn', currentProject().name); rb.type = 'button'; rb.title = '눌러서 프로젝트 이름 바꾸기'; rb.onclick = () => renameProject(); rootLi.append(rb);
+  const partUl = mk('ul');
+  Prompt.parts.forEach(part => {
+    const members = part.ids.map(sectionById), done = members.filter(m => isFilled(m.id)).length, open = mapOpen.has(part.id);
+    const li = mk('li', 't-part' + (done === members.length ? ' complete' : '') + (curPart === part ? ' current' : ''));
+    const b = mk('button', 't-part-label'); b.type = 'button'; b.setAttribute('aria-expanded', String(open));
+    b.append(mk('span', '', `${open ? '▾' : '▸'} ${part.title}`), mk('span', 'cnt', `${done}/${members.length}`)); b.onclick = () => { open ? mapOpen.delete(part.id) : mapOpen.add(part.id); renderMap(); }; li.append(b);
+    if (open) {
+      const ul = mk('ul');
+      members.forEach(m => {
+        const text = sectionBody(m.id), sl = mk('li', 't-step' + (text ? ' done' : '') + (m.id === cur ? ' current' : '') + (m.id === mapSel ? ' sel' : ''));
+        const row = mk('div', 't-row'), nb = mk('button', 't-step-btn'); nb.type = 'button'; nb.title = m.hint; nb.setAttribute('aria-pressed', String(m.id === mapSel));
+        nb.append(mk('b', '', m.title), mk('span', '', text.replace(/\*\*/g, '') || '아직 이야기하지 않았어요')); nb.onclick = () => { mapSel = m.id === mapSel ? '' : m.id; renderMap(); };
+        row.append(nb); sl.append(row); if (m.id === mapSel) sl.append(buildMapDetail(m)); ul.append(sl);
+      });
+      li.append(ul);
+    }
+    partUl.append(li);
+  });
+  rootLi.append(partUl); rootUl.append(rootLi); host.append(rootUl);
+}
+function buildMapDetail(m) {
+  const box = mk('div', 'map-detail'), head = mk('div', 'md-head'); head.append(mk('span', '', m.title));
+  const close = mk('button', 'text-button', '닫기'); close.type = 'button'; close.onclick = () => { mapSel = ''; renderMap(); }; head.append(close);
+  const ta = document.createElement('textarea'); ta.value = sectionBody(m.id); ta.placeholder = m.hint; ta.disabled = busy; ta.setAttribute('aria-label', m.title);
+  const acts = mk('div', 'md-actions');
+  const save = mk('button', 'primary', '저장'); save.type = 'button'; save.disabled = busy; save.onclick = () => { if (/AIza[\w-]{20,}/.test(ta.value)) { toast('API 키는 설정에 입력해 주세요.'); return; } const v = redact(ta.value).trim(); if (v) state.doc[m.id] = v; else delete state.doc[m.id]; persist(); render(); toast('수정했어요.'); };
+  const talk = mk('button', '', '이 부분 이야기하기'); talk.type = 'button'; talk.onclick = () => { $('chat-input').value = `“${m.title.replace(/^[A-Z]-\d+\.\s*/, '')}” 부분에 대해 이야기하고 싶어요. `; $('detail-panel').classList.remove('mobile-open'); $('chat-input').focus(); };
+  acts.append(save, talk);
+  box.append(head, mk('div', 'md-q', m.hint), ta, acts); return box;
 }
 function updateConnection() {
   $('mode-label').classList.toggle('on', !!apiKey);
   $('mode-text').textContent = apiKey ? 'Gemini 연결됨' : 'AI 연결 필요 · 설정에서 API 키를 입력해 주세요';
 }
 function render(flashIds) {
-  renderTopbar(); renderMessages(); renderChips(); renderDocument(flashIds); updateConnection();
-  $('send').disabled = busy; $('make-final').disabled = busy; $('chat-input').disabled = busy;
+  renderProjects(); renderSteps(); renderMap(); renderMessages(); renderChips(); renderDocument(flashIds); updateConnection();
+  $('send').disabled = busy; $('make-final').disabled = busy; $('chat-input').disabled = busy; $('new-project').disabled = busy;
 }
 function scrollChat() { requestAnimationFrame(() => { const c = $('chat-scroll'); c.scrollTo({top:c.scrollHeight, behavior:'smooth'}); }); }
 function panel(name) {
-  ['document', 'settings'].forEach(n => { $(n + '-panel').hidden = name !== n; $(n + '-tab').setAttribute('aria-selected', String(name === n)); });
+  ['map', 'document', 'settings'].forEach(n => { $(n + '-panel').hidden = name !== n; $(n + '-tab').setAttribute('aria-selected', String(name === n)); });
   $('detail-panel').classList.add('mobile-open');
 }
 function needKey(message) { panel('settings'); $('api-key').focus(); $('key-status').textContent = message; }
@@ -152,28 +215,28 @@ const todayKey = () => new Date().toLocaleDateString('sv');
 function todayCalls() { try { const u = JSON.parse(localStorage.getItem(USAGE_KEY) || 'null'); return u && u.date === todayKey() ? u.count : 0; } catch { return 0; } }
 function countCall() { sessionCalls++; try { localStorage.setItem(USAGE_KEY, JSON.stringify({date:todayKey(), count:todayCalls() + 1})); } catch {} renderUsage(); }
 function renderUsage() { $('usage-info').textContent = `이 브라우저에서 AI를 호출한 횟수: 오늘 ${todayCalls()}회 · 이번 접속 ${sessionCalls}회`; }
-async function requestAI(system, prompt, schema, maxTokens = 4096) {
+async function callModel(m, system, prompt, schema, maxTokens = 4096) {
   const ctl = new AbortController(), timeout = setTimeout(() => ctl.abort(), 120000);
   const levels = [{think:true, schema:true}, {think:false, schema:true}, {think:false, schema:false}]; let li = 0, waited429 = false;
   try {
     let response, detail = '';
     for (let attempt = 0;;) {
       const level = levels[li], cfg = {maxOutputTokens:maxTokens, responseMimeType:'application/json'};
-      const think = level.think && thinkingFor(model); if (think) cfg.thinkingConfig = think; if (level.schema) cfg.responseSchema = schema;
+      const think = level.think && thinkingFor(m); if (think) cfg.thinkingConfig = think; if (level.schema) cfg.responseSchema = schema;
       countCall();
-      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {method:'POST', headers:{'Content-Type':'application/json', 'x-goog-api-key':apiKey}, body:JSON.stringify({systemInstruction:{parts:[{text:system}]}, contents:[{role:'user', parts:[{text:prompt}]}], generationConfig:cfg, safetySettings:SAFETY}), signal:ctl.signal});
+      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`, {method:'POST', headers:{'Content-Type':'application/json', 'x-goog-api-key':apiKey}, body:JSON.stringify({systemInstruction:{parts:[{text:system}]}, contents:[{role:'user', parts:[{text:prompt}]}], generationConfig:cfg, safetySettings:SAFETY}), signal:ctl.signal});
       if (response.ok) break;
       try { detail = await response.text(); } catch { detail = ''; }
-      if (response.status === 400 && li < levels.length - 1 && /thinking|responseSchema|response_schema|schema|mime|systemInstruction/i.test(detail) && !/API key/i.test(detail)) { if (think) noThinking.add(model); li++; continue; }
+      if (response.status === 400 && li < levels.length - 1 && /thinking|responseSchema|response_schema|schema|mime|systemInstruction/i.test(detail) && !/API key/i.test(detail)) { if (think) noThinking.add(m); li++; continue; }
       if (response.status === 429 && !waited429 && !/PerDay|per day|daily/i.test(detail)) { const m = detail.match(/"retryDelay":\s*"(\d+(?:\.\d+)?)s"/); const secs = m ? Number(m[1]) : 0; if (secs > 0 && secs <= 30) { waited429 = true; await sleep(secs * 1000 + 500); continue; } }
-      if ([500, 503].includes(response.status) && attempt < 2) { attempt++; await sleep(1500 * attempt); continue; }
+      if ([500, 503].includes(response.status) && attempt < 1) { attempt++; await sleep(1500 * attempt); continue; }
       break;
     }
     if (!response.ok) {
       const daily = response.status === 429 && /PerDay|per day|daily/i.test(detail);
       const messages = {400:'키 또는 모델 설정을 확인해 주세요.', 401:'유효한 API 키를 입력해 주세요.', 403:'키 권한이나 API 사용 권한을 확인해 주세요.', 404:'이 모델을 찾을 수 없어요. 설정에서 다른 모델을 선택해 주세요.', 500:'AI 서버에 일시적인 문제가 있어요. 잠시 후 다시 시도해 주세요.', 503:'선택한 모델이 지금 혼잡해요. 잠시 후 다시 시도하거나 설정에서 다른 모델을 선택해 주세요.', 429:daily ? '오늘의 무료 사용량을 모두 썼어요. 내일 다시 시도하거나 다른 모델을 선택해 보세요.' : '분당 요청 한도에 도달했어요. 1분쯤 뒤 다시 시도하거나 더 가벼운 모델(Flash-Lite 등)을 선택해 보세요.'};
       let why = ''; try { why = JSON.parse(detail).error?.message || ''; } catch {}
-      throw new Error((messages[response.status] || 'AI 서비스가 응답하지 않아요. 잠시 후 다시 시도해 주세요.') + (why ? ` [${response.status}: ${redact(why).slice(0, 160)}]` : ` [${response.status}]`));
+      const err = new Error((messages[response.status] || 'AI 서비스가 응답하지 않아요. 잠시 후 다시 시도해 주세요.') + (why ? ` [${response.status}: ${redact(why).slice(0, 160)}]` : ` [${response.status}]`)); err.retryOther = [429, 503].includes(response.status); throw err;
     }
     const data = await response.json();
     if (data.candidates?.[0]?.finishReason === 'MAX_TOKENS') throw new Error('응답이 길어 중간에 멈췄어요. 한 번에 말씀하시는 양을 줄여 다시 시도해 주세요.');
@@ -185,6 +248,15 @@ async function requestAI(system, prompt, schema, maxTokens = 4096) {
     if (error instanceof TypeError) throw new Error('네트워크 연결을 확인해 주세요. 학교 네트워크나 광고 차단 프로그램이 Google API를 막고 있을 수 있어요.');
     throw error;
   } finally { clearTimeout(timeout); }
+}
+function altModels() { return modelList.map(x => x.id).filter(id => id !== model && /flash/.test(id) && !/image|tts|live|thinking/.test(id)).sort((a, b) => /preview|exp/.test(a) - /preview|exp/.test(b)).slice(0, 2); }
+async function requestAI(...args) {
+  try { return await callModel(model, ...args); }
+  catch (error) {
+    if (!error.retryOther) throw error;
+    for (const alt of altModels()) { try { const out = await callModel(alt, ...args); toast(`${model} 모델이 혼잡해서 ${alt} 모델로 답했어요.`); return out; } catch (e2) { if (!e2.retryOther) throw e2; } }
+    throw error;
+  }
 }
 function parseJSON(text) {
   const t = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
@@ -198,7 +270,7 @@ function applyReply(json) {
   (Array.isArray(json.updates) ? json.updates : []).forEach(u => { const id = String(u.id || ''), md = String(u.markdown || '').trim(); if (known.has(id) && md && md !== sectionBody(id)) { state.doc[id] = redact(md); changed.push(id); } });
   state.messages.push({role:'assistant', text:redact(reply)});
   state.chips = (Array.isArray(json.chips) ? json.chips : []).map(c => redact(String(c).trim())).filter(Boolean).slice(0, 5);
-  state.ready = !!json.ready;
+  state.ready = !!json.ready; state.focus = sectionById(String(json.focus || '')) ? String(json.focus) : '';
   const title = String(json.title || '').trim().slice(0, 40);
   if (title && /^(나의 수업 웹앱|새 프로젝트 ?\d*)$/.test(currentProject().name)) currentProject().name = title;
   return changed;
@@ -250,23 +322,22 @@ function download(blob, name) { const url = URL.createObjectURL(blob), a = docum
 $('download-doc').onclick = () => download(new Blob([docText()], {type:'text/markdown;charset=utf-8'}), (currentProject().name.replace(/[\\/:*?"<>|]/g, '') || 'PRD') + '-PRD.md');
 
 /* ---------- 프로젝트 ---------- */
-function resetView() { editingId = ''; $('chat-input').value = ''; $('chat-notice').textContent = ''; $('detail-panel').classList.remove('mobile-open'); }
-function switchProject(id) { if (busy || id === currentId) { renderTopbar(); return; } persist(); currentId = id; state = loadState(currentProject().state); resetView(); persist(); render(); scrollChat(); }
+function resetView() { editingId = ''; mapSel = ''; mapSeen = ''; $('chat-input').value = ''; $('chat-notice').textContent = ''; $('detail-panel').classList.remove('mobile-open'); }
+function switchProject(id) { if (busy || id === currentId) return; persist(); currentId = id; state = loadState(currentProject().state); resetView(); persist(); render(); scrollChat(); }
 function newProject() {
   if (busy) return; if (projects.length >= MAX_PROJECTS) { toast(`프로젝트는 최대 ${MAX_PROJECTS}개까지 저장할 수 있어요.`); return; }
   persist(); let n = projects.length + 1, name = `새 프로젝트 ${n}`; while (projects.some(p => p.name === name)) name = `새 프로젝트 ${++n}`;
   const p = {id:uid(), name, updated:Date.now(), state:fresh()}; projects.push(p); currentId = p.id; state = p.state; resetView(); persist(); render(); toast('새 프로젝트를 만들었어요.');
 }
-async function renameProject() { const p = currentProject(), v = await openModal({title:'프로젝트 이름 바꾸기', input:p.name, ok:'저장'}); const name = (v || '').trim().slice(0, 40); if (!name) return; p.name = name; persist(); render(); }
-async function deleteProject() {
-  if (busy) return; const p = currentProject();
+async function renameProject(id = currentId) { const p = projects.find(x => x.id === id), v = await openModal({title:'프로젝트 이름 바꾸기', input:p.name, ok:'저장'}); const name = (v || '').trim().slice(0, 40); if (!name) return; p.name = name; persist(); render(); }
+async function deleteProject(id = currentId) {
+  if (busy) return; const p = projects.find(x => x.id === id);
   if (!await openModal({title:'프로젝트를 삭제할까요?', message:`“${p.name}”의 대화와 기획서가 모두 사라져요.`, ok:'삭제'})) return;
-  if (projects.length === 1) { p.state = fresh(); p.name = DEFAULT_NAME; state = p.state; }
-  else { const idx = projects.indexOf(p); projects.splice(idx, 1); currentId = projects[Math.min(idx, projects.length - 1)].id; state = loadState(currentProject().state); }
+  if (projects.length === 1) { p.state = fresh(); p.name = DEFAULT_NAME; if (id === currentId) state = p.state; }
+  else { const idx = projects.indexOf(p); projects.splice(idx, 1); if (id === currentId) { currentId = projects[Math.min(idx, projects.length - 1)].id; state = loadState(currentProject().state); } }
   resetView(); persist(); render(); toast('프로젝트를 삭제했어요.');
 }
-$('project-select').onchange = () => switchProject($('project-select').value);
-$('new-project').onclick = newProject; $('rename-project').onclick = renameProject; $('delete-project').onclick = deleteProject;
+$('new-project').onclick = newProject; $('project-title').onclick = () => renameProject();
 $('export-projects').onclick = () => { persist(); download(new Blob([JSON.stringify({app:'oni-prdai', version:1, items:projects}, null, 1)], {type:'application/json'}), 'oni-prdai-projects.json'); };
 $('import-projects').onclick = () => $('import-file').click();
 $('import-file').onchange = async () => {
@@ -295,7 +366,7 @@ async function listModels(key) {
 function fillModels(list) {
   const select = $('model'); select.replaceChildren();
   for (const m of list) { const o = document.createElement('option'); o.value = m.id; o.textContent = m.label + ' (' + m.id + ')'; select.append(o); }
-  const pick = list.find(m => m.id === model) || list.find(m => m.id === 'gemini-3.8-flash') || list[0]; select.value = pick.id; model = pick.id; select.disabled = false;
+  modelList = list; const pick = list.find(m => m.id === model) || list.find(m => m.id === 'gemini-3.8-flash') || list[0]; select.value = pick.id; model = pick.id; select.disabled = false;
 }
 $('model').onchange = () => { model = $('model').value; toast('모델을 변경했어요.'); };
 $('toggle-key').onclick = () => { const show = $('api-key').type === 'password'; $('api-key').type = show ? 'text' : 'password'; $('toggle-key').textContent = show ? '숨기기' : '보기'; };
@@ -305,10 +376,14 @@ $('connect-key').onclick = async () => {
   try { const list = await listModels(key); if (!list.length) throw new Error('이 키로 사용할 수 있는 Gemini 모델이 없어요.'); apiKey = key; fillModels(list); $('api-key').value = ''; $('key-status').textContent = '연결되었습니다. 이제 대화를 시작하세요. 모델은 위 목록에서 바꿀 수 있어요.'; updateConnection(); $('detail-panel').classList.remove('mobile-open'); $('chat-input').focus(); }
   catch (error) { $('key-status').textContent = error.message; } finally { $('connect-key').disabled = false; }
 };
-$('remove-key').onclick = () => { if (busy) { toast('진행 중인 요청이 끝난 뒤 삭제해 주세요.'); return; } apiKey = ''; $('model').replaceChildren(new Option('연결 후 선택할 수 있어요', 'gemini-3.8-flash')); $('model').disabled = true; model = 'gemini-3.8-flash'; $('api-key').value = ''; $('key-status').textContent = '키를 삭제했습니다.'; updateConnection(); };
+$('remove-key').onclick = () => { modelList = []; if (busy) { toast('진행 중인 요청이 끝난 뒤 삭제해 주세요.'); return; } apiKey = ''; $('model').replaceChildren(new Option('연결 후 선택할 수 있어요', 'gemini-3.8-flash')); $('model').disabled = true; model = 'gemini-3.8-flash'; $('api-key').value = ''; $('key-status').textContent = '키를 삭제했습니다.'; updateConnection(); };
 $('api-key').onkeydown = e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); $('connect-key').click(); } };
-$('document-tab').onclick = () => panel('document'); $('settings-tab').onclick = () => panel('settings');
+$('map-tab').onclick = () => panel('map'); $('document-tab').onclick = () => panel('document'); $('settings-tab').onclick = () => panel('settings');
 $('panel-toggle').onclick = () => $('detail-panel').classList.toggle('mobile-open');
+$('map-expand').onclick = () => { Prompt.parts.forEach(p => mapOpen.add(p.id)); renderMap(); };
+$('map-collapse').onclick = () => { mapOpen.clear(); const c = partOf(currentSection()); if (c) mapOpen.add(c.id); renderMap(); };
+const SB_KEY = 'oni.prdai.sidebar.v1'; let sbState = {}; try { sbState = JSON.parse(localStorage.getItem(SB_KEY) || '{}'); } catch {}
+document.querySelectorAll('.sb-toggle').forEach(btn => { const target = $(btn.dataset.target); const apply = open => { target.hidden = !open; btn.setAttribute('aria-expanded', String(open)); }; apply(sbState[btn.dataset.target] !== false); btn.onclick = () => { const open = target.hidden; apply(open); sbState[btn.dataset.target] = open; try { localStorage.setItem(SB_KEY, JSON.stringify(sbState)); } catch {} }; });
 window.addEventListener('storage', e => { if (e.key === PROJECTS_KEY) $('save-status').textContent = '다른 탭에서 변경됨 · 새로고침하면 반영돼요'; });
 
 renderUsage(); render();
