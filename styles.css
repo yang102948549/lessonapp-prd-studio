@@ -220,3 +220,13 @@
 .project-open:hover,.project-open:focus-visible{background:transparent}
 .project-tool{border-radius:6px}
 .project-tool:hover{background:#d9d9d4;color:var(--fg);opacity:1}
+
+/* 모달(이름 바꾸기·삭제 확인) */
+#modal{padding:0;width:min(360px,calc(100vw - 32px));border-radius:14px;box-shadow:0 12px 40px #0003}
+#modal::backdrop{background:#0004}
+#modal>.modal-body{display:block;margin:0;padding:22px 22px 18px}
+#modal h2{font-size:18px;margin:0 0 8px;font-weight:650}
+#modal p{font-size:14px;line-height:1.6;margin:0;color:var(--muted)}
+#modal input{width:100%;margin-top:6px;font-size:16px}
+#modal .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+#modal .modal-actions button{font-size:14px;padding:8px 16px}
