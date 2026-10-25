@@ -119,3 +119,39 @@
 .map-detail .md-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.map-detail .md-actions button{font-size:13px;padding:7px 11px}
 .mnode.step.sel{box-shadow:0 0 0 2px #6a8bba}
 .mnode.group button{line-height:1.3;text-align:left}
+
+/* 폴더 트리형 계획 지도 */
+.map-canvas{width:auto!important;height:auto!important}
+.tree{--tline:#d3d3ce}
+.tree,.tree ul{list-style:none;margin:0;padding:0}
+.tree ul{margin-left:14px;padding-left:22px}
+.tree li{position:relative;padding:3px 0}
+.tree ul>li::before{content:'';position:absolute;left:-22px;top:0;bottom:0;border-left:2px solid var(--tline)}
+.tree ul>li:last-child::before{bottom:auto;height:22px}
+.tree ul>li::after{content:'';position:absolute;left:-22px;top:22px;width:20px;border-top:2px solid var(--tline)}
+.tree li.done::before,.tree li.done::after,.tree li.complete::before,.tree li.complete::after{border-color:#718b7c}
+.t-root-btn{background:var(--accent);color:var(--inverse);border:0;border-radius:10px;padding:10px 14px;font-weight:650;font-size:15px;max-width:100%;text-align:left;overflow-wrap:anywhere}
+.t-sec-btn{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;font-size:14px;font-weight:650;padding:9px 12px;border-radius:10px;background:var(--surface);line-height:1.4}
+.t-sec.complete>.t-sec-btn{border-color:#718b7c}
+.t-sec.current>.t-sec-btn{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.t-sec .cnt{color:var(--muted);font-weight:400;font-size:12px;white-space:nowrap}
+.t-row{display:flex;align-items:stretch;border:1px solid var(--border);border-radius:10px;background:var(--bg);overflow:hidden}
+.t-step-btn{flex:1;min-width:0;text-align:left;border:0;border-radius:0;background:transparent;padding:8px 12px;display:flex;flex-direction:column;gap:2px;font-size:13px}
+.t-step-btn b{font-size:13px;font-weight:650}
+.t-step-btn span{color:var(--muted);line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.t-step.done>.t-row{border-color:#718b7c;background:#f3f7f4}
+.t-step.skip>.t-row{border-style:dashed;border-color:#9b6026}
+.t-step.current>.t-row{background:var(--accent);border-color:var(--accent)}
+.t-step.current .t-step-btn b,.t-step.current .t-step-btn span,.t-step.current .t-del{color:var(--inverse)}
+.t-step.sel>.t-row{box-shadow:0 0 0 2px #6a8bba}
+.t-del{border:0;background:transparent;border-radius:0;padding:0 12px;font-size:12px;color:var(--muted)}
+.t-step .map-detail{margin:6px 0 4px;border:1px solid var(--border);border-radius:10px;max-height:none;padding:10px 12px}
+
+/* 고칠 수 있는 선택지 */
+.chip-wrap{display:inline-flex;align-items:stretch;max-width:100%}
+.chip-wrap .chip{border-top-right-radius:0;border-bottom-right-radius:0;min-width:0}
+.chip-edit-btn{border-left:0;border-radius:0 9px 9px 0;padding:0 11px;font-size:15px;color:var(--muted)}
+.chip[aria-pressed=true]+.chip-edit-btn{background:var(--accent);color:var(--inverse);border-color:var(--accent);opacity:.85}
+.chip-editor{width:100%;display:flex;flex-direction:column;gap:8px;border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--side)}
+.chip-edit{width:100%;min-height:76px;border:1px solid #c9c9c5;border-radius:8px;padding:10px 12px;font-size:16px;line-height:1.6;background:var(--bg);color:var(--fg);resize:vertical}
+.chip-editor-actions{display:flex;gap:8px}.chip-editor-actions button{font-size:14px;padding:8px 14px}

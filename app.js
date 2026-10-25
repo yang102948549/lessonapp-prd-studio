@@ -113,52 +113,81 @@ function renderAnswerLog(){
     tools.append(edit,del);row.append(text,tools);box.append(row);});
 }
 const mapOpen=new Set();let mapSecSeen=-1,mapStepSeen=-2,mapSel='';
-const MAPGAP=20,MAPROW={step:52,group:46},MAPSPACE=8,NO_TEXT_EDIT=new Set(['school','grades','subjects','stack']);
+const NO_TEXT_EDIT=new Set(['school','grades','subjects','stack']);
 const sectionIndexOf=id=>Planning.sectionDefs.findIndex(([,ids])=>ids.includes(id));
-function mapFocus(){const el=$('map-canvas').querySelector('.mnode.step.current');const sc=$('map-scroll');if(el&&sc.clientHeight)sc.scrollTo({top:Math.max(0,el.offsetTop-sc.clientHeight/2+26),behavior:'smooth'});}
-/* 계획 지도: 프로젝트 → PRD 7개 섹션 → 질문. 상자를 누르면 아래에 답 전체가 열리고 그 자리에서 고칠 수 있다 */
+const mk=(tag,cls,txt)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e;};
+function mapFocus(){const el=$('map-canvas').querySelector('.t-step.current');const sc=$('map-scroll');if(!el||!sc.clientHeight)return;const top=el.getBoundingClientRect().top-sc.getBoundingClientRect().top+sc.scrollTop;sc.scrollTo({top:Math.max(0,top-sc.clientHeight/3),behavior:'smooth'});}
+/* 계획 지도: 폴더 트리처럼 위에서 아래로. 프로젝트 → PRD 7개 섹션 → 질문. 질문을 누르면 그 자리에서 답 전체를 보고 고칠 수 있다 */
 function renderMap(){
   const host=$('map-canvas');host.replaceChildren();const cur=definitions[state.step];
   const curSec=cur?sectionIndexOf(cur.id):-1;if(curSec>=0&&curSec!==mapSecSeen){mapOpen.add(curSec);mapSecSeen=curSec;}
   const vis=new Set(definitions.filter(isVisible).map(d=>d.id));$('map-summary').textContent=`${definitions.filter(d=>vis.has(d.id)&&isAnswered(d.id)).length}/${vis.size} 질문에 답했어요`;
-  const root={kind:'root',label:currentProject().name,kids:Planning.sectionDefs.map(([title,ids],s)=>{const st=ids.filter(id=>vis.has(id)).map(id=>definitions.find(d=>d.id===id));const dn=st.filter(d=>isAnswered(d.id)).length;
-    return {kind:'group',s,label:`${s+1}. ${title}`,done:dn,total:st.length,kids:mapOpen.has(s)?st.map(d=>({kind:'step',d,kids:[]})):[]};})};
-  const avail=($('map-scroll').clientWidth||560)-44;const cols=[84,150,Math.max(150,avail-234-2*MAPGAP)];const xs=[];cols.reduce((x,w,i)=>{xs[i]=x;return x+w+MAPGAP;},0);const depth={root:0,group:1,step:2};let cursor=0;
-  (function place(n){n.depth=depth[n.kind];n.h=n.kind==='step'?MAPROW.step:MAPROW.group;n.w=cols[n.depth];n.x=xs[n.depth];
-    if(!n.kids.length){n.y=cursor+n.h/2;cursor+=n.h+MAPSPACE;}else{n.kids.forEach(place);n.y=(n.kids[0].y+n.kids[n.kids.length-1].y)/2;}})(root);
-  const W=xs[2]+cols[2],H=Math.max(cursor-MAPSPACE,40);host.style.width=W+'px';host.style.height=H+'px';
-  const complete=n=>n.kind==='step'?isAnswered(n.d.id):n.kind==='group'?n.total>0&&n.done===n.total:false;
-  const NS='http://www.w3.org/2000/svg';const svg=document.createElementNS(NS,'svg');svg.setAttribute('width',W);svg.setAttribute('height',H);host.append(svg);
-  const nodes=[];(function walk(n,p){if(p){const x1=p.x+p.w,x2=n.x,mx=(x1+x2)/2,path=document.createElementNS(NS,'path');path.setAttribute('d',`M${x1},${p.y} C${mx},${p.y} ${mx},${n.y} ${x2},${n.y}`);if(complete(n))path.setAttribute('class','done');svg.append(path);}nodes.push(n);n.kids.forEach(k=>walk(k,n));})(root,null);
-  nodes.forEach(n=>{const el=document.createElement('div');el.className='mnode '+n.kind;Object.assign(el.style,{left:n.x+'px',top:(n.y-n.h/2)+'px',width:n.w+'px',height:n.h+'px'});
-    if(n.kind==='root'){const b=document.createElement('button');b.type='button';b.textContent=n.label;b.title='눌러서 프로젝트 이름 바꾸기';b.onclick=()=>renameProject();el.append(b);}
-    else if(n.kind==='group'){el.classList.toggle('complete',complete(n));el.classList.toggle('current',curSec===n.s);const b=document.createElement('button');b.type='button';b.setAttribute('aria-expanded',String(mapOpen.has(n.s)));const l=document.createElement('span');l.textContent=(mapOpen.has(n.s)?'▾ ':'▸ ')+n.label;const c=document.createElement('span');c.className='cnt';c.textContent=`${n.done}/${n.total}`;b.append(l,c);b.onclick=()=>{mapOpen.has(n.s)?mapOpen.delete(n.s):mapOpen.add(n.s);renderMap();};el.append(b);}
-    else{const d=n.d,ans=isAnswered(d.id)?answerText(d.id):'';el.classList.toggle('done',!!ans&&!/^미정/.test(ans));el.classList.toggle('skip',/^미정/.test(ans));el.classList.toggle('current',d===cur);el.classList.toggle('sel',d.id===mapSel);
-      const b=document.createElement('button');b.type='button';b.className='nstep';b.title=ans?`${d.question}\n→ ${ans}`:d.question;b.setAttribute('aria-pressed',String(d.id===mapSel));const t1=document.createElement('b');t1.textContent=d.title;const t2=document.createElement('span');t2.textContent=ans||'아직 답하지 않았어요';b.append(t1,t2);b.onclick=()=>{mapSel=d.id===mapSel?'':d.id;renderMap();};el.append(b);
-      if(ans){const x=document.createElement('button');x.type='button';x.className='ndel';x.textContent='✕';x.disabled=busy;x.setAttribute('aria-label',`${d.title} 답변 지우기`);x.onclick=()=>removeAnswer(d.id);el.append(x);}}
-    host.append(el);});
-  renderMapDetail();
+  const rootUl=mk('ul','tree'),rootLi=mk('li','t-root');
+  const rb=mk('button','t-root-btn',currentProject().name);rb.type='button';rb.title='눌러서 프로젝트 이름 바꾸기';rb.onclick=()=>renameProject();rootLi.append(rb);
+  const secUl=mk('ul');
+  Planning.sectionDefs.forEach(([title,ids],s)=>{
+    const st=ids.filter(id=>vis.has(id)).map(id=>definitions.find(d=>d.id===id));const dn=st.filter(d=>isAnswered(d.id)).length,open=mapOpen.has(s);
+    const li=mk('li','t-sec'+(st.length&&dn===st.length?' complete':'')+(curSec===s?' current':''));
+    const b=mk('button','t-sec-btn');b.type='button';b.setAttribute('aria-expanded',String(open));b.append(mk('span','',`${open?'▾':'▸'} ${s+1}. ${title}`),mk('span','cnt',`${dn}/${st.length}`));b.onclick=()=>{open?mapOpen.delete(s):mapOpen.add(s);renderMap();};li.append(b);
+    if(open){const ul=mk('ul');st.forEach(d=>{
+      const ans=isAnswered(d.id)?answerText(d.id):'',skip=/^미정/.test(ans);
+      const sl=mk('li','t-step'+(ans&&!skip?' done':'')+(skip?' skip':'')+(d===cur?' current':'')+(d.id===mapSel?' sel':''));
+      const row=mk('div','t-row');const nb=mk('button','t-step-btn');nb.type='button';nb.title=d.question;nb.setAttribute('aria-pressed',String(d.id===mapSel));nb.append(mk('b','',d.title),mk('span','',ans||'아직 답하지 않았어요'));nb.onclick=()=>{mapSel=d.id===mapSel?'':d.id;renderMap();};row.append(nb);
+      if(ans){const x=mk('button','t-del','✕');x.type='button';x.disabled=busy;x.setAttribute('aria-label',`${d.title} 답변 지우기`);x.onclick=()=>removeAnswer(d.id);row.append(x);}
+      sl.append(row);if(d.id===mapSel)sl.append(buildMapDetail(d));ul.append(sl);});li.append(ul);}
+    secUl.append(li);});
+  rootLi.append(secUl);rootUl.append(rootLi);host.append(rootUl);
   if(mapStepSeen!==state.step){mapStepSeen=state.step;mapFocus();}
 }
-function renderMapDetail(){
-  const box=$('map-detail'),d=definitions.find(x=>x.id===mapSel);box.hidden=!d||!isVisible(d);if(box.hidden)return;box.replaceChildren();
+function buildMapDetail(d){
+  const box=mk('div','map-detail');
   const has=isAnswered(d.id),cur=state.answers[d.id],text=has?(Array.isArray(cur)?cur.join('\n'):cur):'';
-  const el=(tag,txt,cls)=>{const e=document.createElement(tag);if(txt)e.textContent=txt;if(cls)e.className=cls;return e;};
-  const head=el('div','', 'md-head');head.append(el('span',d.title));const close=el('button','닫기','text-button');close.type='button';close.onclick=()=>{mapSel='';renderMap();};head.append(close);
-  box.append(head,el('div',d.question,'md-q'));
+  const head=mk('div','md-head');head.append(mk('span','',d.title));const close=mk('button','text-button','닫기');close.type='button';close.onclick=()=>{mapSel='';renderMap();};head.append(close);
+  box.append(head,mk('div','md-q',d.question));
   const editable=!NO_TEXT_EDIT.has(d.id);let ta=null;
-  if(editable){ta=document.createElement('textarea');ta.value=text;ta.placeholder=d.placeholder;ta.disabled=busy;ta.setAttribute('aria-label',`${d.title} 답변`);box.append(ta);if(d.multi)box.append(el('div','항목마다 줄을 나누어 적어요. 선택지는 “질문 화면에서 고르기”가 편해요.','md-q'));}
-  else box.append(el('div',has?text:'아직 답하지 않았어요','md-full'));
-  const actions=el('div','','md-actions');
-  if(editable){const save=el('button','저장','primary');save.type='button';save.disabled=busy;save.onclick=()=>{const raw=ta.value.trim();if(/AIza[\w-]{20,}/.test(raw)){toast('API 키는 설정에 입력해 주세요.');return;}if(!raw){removeAnswer(d.id);return;}
+  if(editable){ta=document.createElement('textarea');ta.value=text;ta.placeholder=d.placeholder;ta.disabled=busy;ta.setAttribute('aria-label',`${d.title} 답변`);box.append(ta);if(d.multi)box.append(mk('div','md-q','항목마다 줄을 나누어 적어요. 선택지는 “질문 화면에서 고르기”가 편해요.'));}
+  else box.append(mk('div','md-full',has?text:'아직 답하지 않았어요'));
+  const actions=mk('div','md-actions');
+  if(editable){const save=mk('button','primary','저장');save.type='button';save.disabled=busy;save.onclick=()=>{const raw=ta.value.trim();if(/AIza[\w-]{20,}/.test(raw)){toast('API 키는 설정에 입력해 주세요.');return;}if(!raw){removeAnswer(d.id);return;}
     applyAnswer(d,d.multi?raw.split(/\n+/).map(s=>s.trim()).filter(Boolean):raw);if(definitions[state.step]&&!isVisible(definitions[state.step]))state.step=firstUnanswered();syncSelected();persist();render();toast('답변을 수정했어요.');};actions.append(save);}
-  const go=el('button',has?'질문 화면에서 고르기':'이 질문에 답하기');go.type='button';go.disabled=busy;go.onclick=()=>goStep(definitions.indexOf(d));actions.append(go);
-  if(has){const del=el('button','삭제');del.type='button';del.disabled=busy;del.onclick=()=>removeAnswer(d.id);actions.append(del);}
-  box.append(actions);
+  const go=mk('button','',has?'질문 화면에서 고르기':'이 질문에 답하기');go.type='button';go.disabled=busy;go.onclick=()=>goStep(definitions.indexOf(d));actions.append(go);
+  if(has){const del=mk('button','','삭제');del.type='button';del.disabled=busy;del.onclick=()=>removeAnswer(d.id);actions.append(del);}
+  box.append(actions);return box;
 }
 $('map-expand').onclick=()=>{Planning.sectionDefs.forEach((_,s)=>mapOpen.add(s));renderMap();};
 $('map-collapse').onclick=()=>{mapOpen.clear();const c=definitions[state.step];if(c&&sectionIndexOf(c.id)>=0)mapOpen.add(sectionIndexOf(c.id));renderMap();};
 $('cancel-edit').onclick=()=>{if(!busy)goStep(firstUnanswered());};
+/* 선택지는 눌러서 고르거나, ✎로 그 문구를 바탕 삼아 고쳐서 답할 수 있다 */
+const NO_CHIP_EDIT=new Set(['school','grades','subjects','stack']);let editingChip=null;
+function renderChips(def,options){
+  const box=$('chips');if(!def)return;
+  const all=options.map(raw=>typeof raw==='string'?{label:raw,value:raw}:raw);
+  const known=new Set(all.map(o=>o.value));[...selected].filter(v=>!known.has(v)).forEach(v=>all.push({label:v,value:v,group:'직접 입력·수정한 항목'}));
+  let lastGroup='';
+  all.forEach(option=>{
+    if(option.group&&option.group!==lastGroup){const label=document.createElement('div');label.className='chip-group-label';label.textContent=option.group;box.append(label);lastGroup=option.group;}
+    const canEdit=!NO_CHIP_EDIT.has(def.id)&&option.value!=='기타 · 직접 입력';
+    if(editingChip===option.value&&canEdit){
+      const wrap=document.createElement('div');wrap.className='chip-editor';
+      const ta=document.createElement('textarea');ta.className='chip-edit';ta.value=option.value;ta.rows=3;ta.setAttribute('aria-label','선택지 문구 고치기');
+      const row=document.createElement('div');row.className='chip-editor-actions';
+      const ok=document.createElement('button');ok.type='button';ok.className='primary';ok.textContent=def.multi?'이 문구로 선택':'이 문구로 답하기';
+      const cancel=document.createElement('button');cancel.type='button';cancel.textContent='취소';
+      const commit=()=>{const v=ta.value.trim();editingChip=null;if(/AIza[\w-]{20,}/.test(v)){toast('API 키는 설정에 입력해 주세요.');render();return;}
+        if(!v||v===option.value){render();return;}
+        if(def.multi){selected.delete(option.value);selected.add(v);render();}else accept(v);};
+      ok.onclick=commit;cancel.onclick=()=>{editingChip=null;render();};
+      ta.onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();commit();}else if(e.key==='Escape'){editingChip=null;render();}};
+      row.append(ok,cancel);wrap.append(ta,row);box.append(wrap);setTimeout(()=>{ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);wrap.scrollIntoView({block:"center",behavior:"smooth"});});return;
+    }
+    const wrap=document.createElement('span');wrap.className='chip-wrap';
+    const button=document.createElement('button');button.className='chip';button.textContent=option.label;button.disabled=busy;button.setAttribute('aria-pressed',String(selected.has(option.value)));
+    button.onclick=()=>{if(option.value==='기타 · 직접 입력'){$('custom-wrap').hidden=false;$('custom-subject').focus();return;}if(def.multi){selected.has(option.value)?selected.delete(option.value):selected.add(option.value);button.setAttribute('aria-pressed',String(selected.has(option.value)));$('continue').disabled=!selected.size;if(!known.has(option.value))render();}else accept(option.value);};
+    wrap.append(button);
+    if(canEdit){const edit=document.createElement('button');edit.type='button';edit.className='chip-edit-btn';edit.textContent='✎';edit.disabled=busy;edit.title='이 문구를 바탕으로 고쳐서 답하기';edit.setAttribute('aria-label',`${option.label} 문구 고치기`);edit.onclick=()=>{editingChip=option.value;render();};wrap.append(edit);}
+    box.append(wrap);
+  });
+}
 function render(){
   renderProjects();
     const messages=$('messages');messages.replaceChildren();let shown=0;state.messages.forEach((m,index)=>{if(m.role==='user'&&m.kind!=='conversation')return;shown++;const div=document.createElement('div');div.className=`message ${m.role==='user'?'user':'assistant'}`;const del=document.createElement('button');del.type='button';del.className='message-delete';del.textContent='삭제';del.setAttribute('aria-label','이 메시지 삭제');del.disabled=busy;del.onclick=()=>{state.messages.splice(index,1);persist();render();};if(m.role!=='user'){const label=document.createElement('span');label.className='message-label';label.textContent='Oni 코치';div.append(label);const {body,choices}=splitChoices(m.text);div.append(renderMd(body));if(choices.length){const row=document.createElement('div');row.className='md-choices';choices.forEach(c=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=c;b.disabled=busy;b.onclick=()=>{$('chat-input').value=c;$('chat-input').focus();$('chat-notice').textContent='선택한 내용을 입력창에 넣었어요. 고쳐 쓴 뒤 전송하면 답변으로 반영됩니다.';};row.append(b);});div.append(row);}}else div.append(document.createTextNode(m.text));div.append(del);messages.append(div);});$('clear-chat').hidden=!shown;$('clear-chat').disabled=busy;
@@ -178,7 +207,7 @@ function render(){
   $('selection-note').textContent=def?.multi?'여러 개 선택 가능 · 직접 입력한 내용도 함께 반영해요':'칩은 답변의 출발점이에요. 선택 후 다음 질문에서 구체화합니다.';
   $('previous-answer').hidden=!def||!answerText(def.id);$('clear-answer').hidden=!def||!answerText(def.id);$('clear-answer').disabled=busy;$('previous-answer').textContent=def&&answerText(def.id)?`이전에 정한 내용: ${answerText(def.id)}`:'';
   let options=def?.id==='grades'?gradeOptions():Planning.options(def?.id,state.answers);if(def?.id==='subjects')options=[...options,...state.extraSubjects];
-  let lastGroup='';options.forEach(raw=>{const option=typeof raw==='string'?{label:raw,value:raw}:raw;if(option.group&&option.group!==lastGroup){const label=document.createElement('div');label.className='chip-group-label';label.textContent=option.group;$('chips').append(label);lastGroup=option.group;}const button=document.createElement('button');button.className='chip';button.textContent=option.label;button.disabled=busy;button.setAttribute('aria-pressed',String(selected.has(option.value)));button.onclick=()=>{if(option.value==='기타 · 직접 입력'){$('custom-wrap').hidden=false;$('custom-subject').focus();return;}if(def.multi){selected.has(option.value)?selected.delete(option.value):selected.add(option.value);button.setAttribute('aria-pressed',String(selected.has(option.value)));$('continue').disabled=!selected.size;}else accept(option.value);};$('chips').append(button);});
+  renderChips(def,options);
   $('send').disabled=busy;$('ai-refine').disabled=busy;$('new-chat').disabled=busy;
   $('chat-input').disabled=busy;$('edit-doc').disabled=busy;
   $('cancel-edit').hidden=!def||!isAnswered(def.id)||firstUnanswered()===state.step;$('cancel-edit').disabled=busy;
