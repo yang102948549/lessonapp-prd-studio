@@ -5,15 +5,14 @@
   <meta name="description" content="대화하며 만드는 수업 웹앱 PRD">
   <meta name="referrer" content="no-referrer">
   <title>Oni Studio</title>
-  <link rel="stylesheet" href="styles.css?v=4"><script defer src="prompt.js?v=4"></script><script defer src="app.js?v=4"></script>
+  <link rel="stylesheet" href="styles.css?v=5"><script defer src="prompt.js?v=5"></script><script defer src="app.js?v=5"></script>
 </head>
 <body>
 <aside class="sidebar">
   <a class="brand" href="./"><span class="mark" aria-hidden="true"></span>Oni Studio</a>
-  <div class="side-intro"><p class="side-title">말하듯 적으면,<br>AI가 이어서 묻고 제안해요.</p><p class="side-sub">추천 칩을 눌러도, 직접 써도 좋아요. 대화가 쌓이면 기획서가 완성됩니다.</p></div>
+  <div class="side-intro"><p class="side-title">수업 아이디어를,<br>함께 구체적으로.</p><p class="side-sub">선택지를 눌러도, 편하게 이야기해도 좋아요.<br>대화가 쌓이면 나만의 기획서가 완성됩니다.</p></div>
   <button class="sidebar-label sb-toggle" data-target="projects-body" aria-expanded="true" type="button">프로젝트</button>
   <div id="projects-body"><div id="project-list" class="project-list"></div><button id="new-project" class="new-project" type="button">＋ <span>새 프로젝트</span></button></div>
-  <button class="sidebar-label steps-label sb-toggle" data-target="steps" aria-expanded="true" type="button">현재 단계</button><nav id="steps" aria-label="기획 단계"></nav>
   <footer class="site-footer">© 2026 Onischool by Oniaby</footer>
 </aside>
 <main>
@@ -41,12 +40,12 @@
       </section>
       <section id="settings-panel" role="tabpanel" aria-labelledby="settings-tab" hidden>
         <h2>설정</h2>
-        <div class="field-block"><label for="api-key">Gemini API 키</label><div class="inline-input"><input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="발급받은 API 키를 붙여넣으세요"><button id="toggle-key" type="button">보기</button></div>
+        <div class="field-block"><label for="api-key">Gemini API 키</label><div class="inline-input key-row"><input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="API 키를 붙여넣으세요"><button id="connect-key" class="primary" type="button">연결</button><button id="remove-key" type="button">키 삭제</button></div>
           <label for="model">사용할 모델</label><select id="model" disabled><option value="gemini-3.8-flash">연결 후 선택할 수 있어요</option></select>
-          <div class="key-actions"><button id="connect-key" class="primary" type="button">연결 확인</button><button id="remove-key" type="button">키 삭제</button></div><p id="key-status" role="status"></p>
+          <p id="key-status" role="status"></p>
           <p class="field-help">모델이 혼잡하면 목록의 다른 Flash 모델로 자동 전환해 한 번 더 시도해요. 키는 이 탭의 메모리에만 있고 새로고침하면 다시 입력해야 해요. 대화·기획서는 이 브라우저에 자동 저장되고(서버로 보내지 않아요), 답변을 만들기 위해 대화 내용은 Google Gemini로 전송돼요.</p>
           <p id="usage-info" class="field-help"></p></div>
-        <div class="guide"><h3>API 키가 처음이신가요?</h3><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio에서 키 발급받기 ↗</a><ol><li>Google 계정으로 로그인하세요.</li><li><b>API 키 만들기(Create API key)</b>를 선택하세요.</li><li>키를 복사해 위 입력란에 붙여넣고 <b>연결 확인</b>을 누르세요.</li></ol><p>학교 계정은 관리자 설정에 따라 발급이 제한될 수 있어요.</p></div>
+        <div class="guide"><h3>API 키가 처음이신가요?</h3><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio에서 키 발급받기 ↗</a><ol><li>Google 계정으로 로그인하세요.</li><li><b>API 키 만들기(Create API key)</b>를 선택하세요.</li><li>키를 복사해 위 입력란에 붙여넣고 <b>연결</b>을 누르세요.</li></ol><p>학교 계정은 관리자 설정에 따라 발급이 제한될 수 있어요.</p></div>
         <div class="field-block backup"><b>프로젝트 백업</b><small>프로젝트는 이 브라우저에만 저장돼요. 파일로 내보내 두면 다른 기기에서 불러올 수 있어요. 최대 20개까지 저장해요.</small><div class="key-actions"><button id="export-projects" type="button">내보내기</button><button id="import-projects" type="button">불러오기</button><input id="import-file" type="file" accept="application/json,.json" hidden></div></div>
       </section>
     </aside>

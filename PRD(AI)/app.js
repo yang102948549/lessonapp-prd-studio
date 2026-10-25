@@ -140,21 +140,6 @@ function renderProjects() {
   });
   $('project-title').textContent = currentProject().name;
 }
-function renderSteps() {
-  const root = $('steps'); root.replaceChildren(); const cur = currentSection(), curPart = partOf(cur);
-  Prompt.parts.forEach(part => {
-    const members = part.ids.map(sectionById), done = members.filter(m => isFilled(m.id)).length;
-    const d = document.createElement('details'); d.open = curPart === part;
-    const sum = document.createElement('summary'); sum.textContent = `${part.title}  ${done}/${members.length}${done === members.length ? ' ✓' : ''}`; d.append(sum);
-    members.forEach(m => {
-      const b = mk('button', (m.id === cur ? 'current ' : '') + (isFilled(m.id) ? 'done' : '')); b.type = 'button'; b.title = m.hint;
-      b.append(mk('span', 'step-dot', isFilled(m.id) ? '✓' : ''), mk('span', 'step-label', m.title.replace(/^[A-Z]-\d+\.\s*/, '')));
-      b.onclick = () => { mapSel = m.id; mapOpen.add(partOf(m.id).id); panel('map'); renderMap(); };
-      d.append(b);
-    });
-    root.append(d);
-  });
-}
 function renderMap() {
   const host = $('map-canvas'); host.replaceChildren(); const cur = currentSection(), curPart = partOf(cur);
   if (curPart && curPart.id !== mapSeen) { mapOpen.add(curPart.id); mapSeen = curPart.id; }
@@ -196,7 +181,7 @@ function updateConnection() {
   $('mode-text').textContent = apiKey ? 'Gemini 연결됨' : 'AI 연결 필요 · 설정에서 API 키를 입력해 주세요';
 }
 function render(flashIds) {
-  renderProjects(); renderSteps(); renderMap(); renderMessages(); renderChips(); renderDocument(flashIds); updateConnection();
+  renderProjects(); renderMap(); renderMessages(); renderChips(); renderDocument(flashIds); updateConnection();
   $('send').disabled = busy; $('make-final').disabled = busy; $('chat-input').disabled = busy; $('new-project').disabled = busy;
 }
 function scrollChat() { requestAnimationFrame(() => { const c = $('chat-scroll'); c.scrollTo({top:c.scrollHeight, behavior:'smooth'}); }); }
@@ -369,7 +354,6 @@ function fillModels(list) {
   modelList = list; const pick = list.find(m => m.id === model) || list.find(m => m.id === 'gemini-3.8-flash') || list[0]; select.value = pick.id; model = pick.id; select.disabled = false;
 }
 $('model').onchange = () => { model = $('model').value; toast('모델을 변경했어요.'); };
-$('toggle-key').onclick = () => { const show = $('api-key').type === 'password'; $('api-key').type = show ? 'text' : 'password'; $('toggle-key').textContent = show ? '숨기기' : '보기'; };
 $('connect-key').onclick = async () => {
   if (busy) return; const key = $('api-key').value.trim(); if (!key) { $('key-status').textContent = 'API 키를 입력해 주세요.'; return; }
   $('connect-key').disabled = true; $('key-status').textContent = '연결 확인 중…';
