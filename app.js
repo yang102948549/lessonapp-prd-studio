@@ -1,7 +1,7 @@
 const $ = id => document.getElementById(id);
 const STORAGE = 'lessonapp.workspace.v1', PROJECTS_KEY = 'oni.projects.v1', DEFAULT_NAME = '나의 수업 웹앱', MAX_PROJECTS = 20, QUOTA_BYTES = 5*1024*1024;
 const definitions = Planning.steps;
-const fresh = () => ({version:2,step:0,answers:{},messages:[],draft:'',draftStale:false,previousDraft:'',extraSubjects:[]});
+const fresh = () => ({version:3,step:0,answers:{},messages:[],draft:'',draftStale:false,previousDraft:'',extraSubjects:[]});
 let state = fresh(), projects = [], currentId = '';
 const uid=()=>'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const loadState=raw=>{try{const saved=Planning.migrate(raw);return saved?{...fresh(),...saved}:fresh();}catch{return fresh();}};
@@ -13,7 +13,7 @@ let selected = new Set(Array.isArray(state.answers[definitions[state.step]?.id])
 const deletedIds=new Set();
 function mergeStored(){try{const all=JSON.parse(localStorage.getItem(PROJECTS_KEY)||'null');(all?.items||[]).forEach(p=>{if(p.id&&!deletedIds.has(p.id)&&!projects.some(x=>x.id===p.id))projects.push({id:p.id,name:p.name||DEFAULT_NAME,updated:p.updated||0,state:p.state});});}catch{}}
 function persist(){try{mergeStored();const p=currentProject();p.state=state;p.updated=Date.now();localStorage.setItem(PROJECTS_KEY,JSON.stringify({current:currentId,items:projects}));$('save-status').textContent='브라우저에 저장됨';}catch{$('save-status').textContent='저장 공간 부족 · MD로 다운로드하세요';}}
-function toast(message){$('toast').textContent=message;$('toast').style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').style.display='none',2800);}
+function toast(message,action){const el=$('toast');el.replaceChildren(document.createTextNode(message));if(action){const b=document.createElement('button');b.type='button';b.textContent=action.label;b.onclick=()=>{el.style.display='none';action.run();};el.append(b);}el.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.style.display='none',action?7000:2800);}
 function redact(text){return String(text).replace(/AIza[\w-]{20,}/g,'[API 키 삭제됨]').split(apiKey || '\u0000').join(apiKey?'[API 키 삭제됨]':'\u0000');}
 function addMessage(role,text){state.messages.push({role,text:redact(text),kind:'conversation'});}
 function inlineMd(parent,text){text.split(/<br\s*\/?>/i).forEach((part,i)=>{if(i)parent.append(document.createElement('br'));part.split(/(\*\*[^*]+\*\*|`[^`]+`)/).forEach(t=>{if(!t)return;if(t.startsWith('**')&&t.endsWith('**')&&t.length>4){const b=document.createElement('strong');b.textContent=t.slice(2,-2);parent.append(b);}else if(t.startsWith('`')&&t.endsWith('`')&&t.length>2){const c=document.createElement('code');c.textContent=t.slice(1,-1);parent.append(c);}else parent.append(document.createTextNode(t));});});}
@@ -57,7 +57,20 @@ function renderDocument(){
   $('draft-label').textContent=state.draft?'상세 문서 · 교사 검토 필요':'답변 기반 설계 초안';
   if(!editing)$('document-editor').value=markdown();
 }
-function goStep(index){if(busy)return;state.step=index;selected=new Set(Array.isArray(state.answers[definitions[index]?.id])?state.answers[definitions[index].id]:[]);persist();render();$('detail-panel').classList.remove('mobile-open');scrollChat();}
+const syncSelected=()=>{const id=definitions[state.step]?.id;selected=new Set(Array.isArray(state.answers[id])?state.answers[id]:[]);};
+const isAnswered=id=>{const v=state.answers[id];return Array.isArray(v)?v.length>0:!!v;};
+const isVisible=d=>!d.when||d.when(state.answers);
+const firstUnanswered=()=>{const i=definitions.findIndex(d=>isVisible(d)&&!isAnswered(d.id));return i<0?definitions.length:i;};
+const CASCADE={school:['grades'],subjects:['activity','method'],activity:['method'],teacher:['teacherView']};
+function goStep(index){if(busy)return;state.step=index;syncSelected();persist();render();$('detail-panel').classList.remove('mobile-open');scrollChat();}
+function removeAnswer(id){
+  if(busy||!isAnswered(id))return;
+  const keys=[id,...(CASCADE[id]||[])].filter(k=>k in state.answers);const removed=Object.fromEntries(keys.map(k=>[k,state.answers[k]]));
+  keys.forEach(k=>delete state.answers[k]);state.draftStale=!!state.draft;
+  if(definitions[state.step]&&!isVisible(definitions[state.step]))state.step=firstUnanswered();
+  syncSelected();$('chat-input').value='';$('chat-notice').textContent='';persist();render();
+  toast(`“${definitions.find(d=>d.id===id).title}” 답변을 지웠어요.`,{label:'되돌리기',run:()=>{if(busy)return;Object.entries(removed).forEach(([k,v])=>{if(!isAnswered(k))state.answers[k]=v;});if(state.draft)state.draftStale=true;syncSelected();persist();render();}});
+}
 function resetView(){selected=new Set(Array.isArray(state.answers[definitions[state.step]?.id])?state.answers[definitions[state.step].id]:[]);editing=false;$('document-editor').hidden=true;$('prd-preview').hidden=false;$('edit-doc').textContent='직접 편집';$('chat-input').value='';$('chat-notice').textContent='';$('detail-panel').classList.remove('mobile-open');}
 function switchProject(id){if(busy||id===currentId)return;persist();currentId=id;state=loadState(currentProject().state);resetView();persist();render();scrollChat();}
 function newProject(){if(busy)return;if(projects.length>=MAX_PROJECTS){toast(`프로젝트는 최대 ${MAX_PROJECTS}개까지 저장할 수 있어요. 안 쓰는 프로젝트를 삭제하거나 내보낸 뒤 지워 주세요.`);return;}persist();const n=projects.length+1;let name=`새 프로젝트 ${n}`;while(projects.some(p=>p.name===name))name=`새 프로젝트 ${projects.length+Math.floor(Math.random()*90+10)}`;const p={id:uid(),name,updated:Date.now(),state:fresh()};projects.push(p);currentId=p.id;state=p.state;resetView();persist();render();toast('새 프로젝트를 만들었어요.');}
@@ -80,11 +93,59 @@ function renderProjects(){renderStorage();
     row.append(open,edit,del);list.append(row);});
   $('project-title').textContent=currentProject().name;
 }
+function renderStackCard(def){const card=$('stack-card');card.hidden=!(def&&def.id==='stack');if(card.hidden)return;card.replaceChildren();
+  const r=Planning.recommend(state.answers);const add=(tag,text,cls)=>{const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;card.append(e);return e;};
+  add('h3','추천: '+r.label);add('div',r.one);
+  if(r.reasons.length){const ul=document.createElement('ul');r.reasons.forEach(x=>{const li=document.createElement('li');li.textContent=x;ul.append(li);});card.append(ul);}
+  const dl=document.createElement('dl');[['프론트엔드',r.frontend],['백엔드·저장',r.backend],['배포',r.deploy],['무료 범위',r.free],['주의',r.caution]].forEach(([k,v])=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=k;dd.textContent=v;dl.append(dt,dd);});card.append(dl);
+  r.warnings.forEach(w=>add('p','⚠ '+w,'warn'));
+}
+function renderAnswerLog(){
+  const wrap=$('answer-log-wrap'),box=$('answer-log');const items=definitions.filter(d=>isVisible(d)&&isAnswered(d.id));
+  wrap.hidden=!items.length;box.replaceChildren();$('answer-log-title').textContent=`내가 정한 답변 ${items.length}개 · 수정하거나 지울 수 있어요`;
+  let last=-1;items.forEach(d=>{
+    if(d.group!==last){last=d.group;const g=document.createElement('div');g.className='al-group';const part=Planning.parts.find(p=>p.groups.includes(d.group));g.textContent=`${part.title.split(' · ')[0]} · ${Planning.groups[d.group]}`;box.append(g);}
+    const row=document.createElement('div');row.className='al-row'+(definitions[state.step]===d?' current':'');
+    const text=document.createElement('div');text.className='al-text';const q=document.createElement('div');q.className='al-q';q.textContent=d.title;const a=document.createElement('div');a.className='al-a';a.textContent=answerText(d.id);a.title=answerText(d.id);text.append(q,a);
+    const tools=document.createElement('div');tools.className='al-tools';
+    const edit=document.createElement('button');edit.type='button';edit.textContent='수정';edit.disabled=busy;edit.setAttribute('aria-label',`${d.title} 답변 수정`);edit.onclick=()=>goStep(definitions.indexOf(d));
+    const del=document.createElement('button');del.type='button';del.textContent='삭제';del.disabled=busy;del.setAttribute('aria-label',`${d.title} 답변 삭제`);del.onclick=()=>removeAnswer(d.id);
+    tools.append(edit,del);row.append(text,tools);box.append(row);});
+}
+const mapOpen=new Set();let mapGroupSeen=-1,mapStepSeen=-2;
+let MAPCOLS=[84,98,122,150];const MAPGAP=20,MAPROW={step:52,group:42},MAPSPACE=8;
+function mapFocus(){const el=$('map-canvas').querySelector('.mnode.step.current');const sc=$('map-scroll');if(el&&sc.clientHeight)sc.scrollTo({top:Math.max(0,el.offsetTop-sc.clientHeight/2+26),behavior:'smooth'});}
+function renderMap(){
+  const host=$('map-canvas');host.replaceChildren();const cur=definitions[state.step];const avail=($('map-scroll').clientWidth||560)-44;MAPCOLS=[84,98,122,Math.max(140,avail-304-3*MAPGAP)];
+  if(cur&&cur.group!==mapGroupSeen){mapOpen.add(cur.group);mapGroupSeen=cur.group;}
+  const vis=definitions.filter(isVisible);$('map-summary').textContent=`${vis.filter(d=>isAnswered(d.id)).length}/${vis.length} 질문에 답했어요`;
+  const root={kind:'root',label:currentProject().name,kids:Planning.parts.map(p=>({kind:'part',label:p.title,kids:p.groups.map(g=>{const st=vis.filter(d=>d.group===g),dn=st.filter(d=>isAnswered(d.id)).length;
+    return {kind:'group',g,label:Planning.groups[g],done:dn,total:st.length,kids:mapOpen.has(g)?st.map(d=>({kind:'step',d,kids:[]})):[]};})}))};
+  const xs=[];MAPCOLS.reduce((x,w,i)=>{xs[i]=x;return x+w+MAPGAP;},0);const depth={root:0,part:1,group:2,step:3};let cursor=0;
+  (function place(n){n.depth=depth[n.kind];n.h=n.kind==='step'?MAPROW.step:MAPROW.group;n.w=MAPCOLS[n.depth];n.x=xs[n.depth];
+    if(!n.kids.length){n.y=cursor+n.h/2;cursor+=n.h+MAPSPACE;}else{n.kids.forEach(place);n.y=(n.kids[0].y+n.kids[n.kids.length-1].y)/2;}})(root);
+  const W=xs[3]+MAPCOLS[3],H=Math.max(cursor-MAPSPACE,40);host.style.width=W+'px';host.style.height=H+'px';
+  const complete=n=>n.kind==='step'?isAnswered(n.d.id):n.kind==='group'?n.total>0&&n.done===n.total:n.kind==='part'?n.kids.every(complete):false;
+  const NS='http://www.w3.org/2000/svg';const svg=document.createElementNS(NS,'svg');svg.setAttribute('width',W);svg.setAttribute('height',H);host.append(svg);
+  const nodes=[];(function walk(n,p){if(p){const x1=p.x+p.w,x2=n.x,mx=(x1+x2)/2,path=document.createElementNS(NS,'path');path.setAttribute('d',`M${x1},${p.y} C${mx},${p.y} ${mx},${n.y} ${x2},${n.y}`);if(complete(n))path.setAttribute('class','done');svg.append(path);}nodes.push(n);n.kids.forEach(k=>walk(k,n));})(root,null);
+  nodes.forEach(n=>{const el=document.createElement('div');el.className='mnode '+n.kind;Object.assign(el.style,{left:n.x+'px',top:(n.y-n.h/2)+'px',width:n.w+'px',height:n.h+'px'});
+    if(n.kind==='root'){const b=document.createElement('button');b.type='button';b.textContent=n.label;b.title='눌러서 프로젝트 이름 바꾸기';b.onclick=()=>renameProject();el.append(b);}
+    else if(n.kind==='part')el.textContent=n.label;
+    else if(n.kind==='group'){el.classList.toggle('complete',complete(n));el.classList.toggle('current',!!cur&&cur.group===n.g);const b=document.createElement('button');b.type='button';b.setAttribute('aria-expanded',String(mapOpen.has(n.g)));const l=document.createElement('span');l.textContent=(mapOpen.has(n.g)?'▾ ':'▸ ')+n.label;const c=document.createElement('span');c.className='cnt';c.textContent=`${n.done}/${n.total}`;b.append(l,c);b.onclick=()=>{mapOpen.has(n.g)?mapOpen.delete(n.g):mapOpen.add(n.g);renderMap();};el.append(b);}
+    else{const d=n.d,ans=isAnswered(d.id)?answerText(d.id):'';el.classList.toggle('done',!!ans&&!/^미정/.test(ans));el.classList.toggle('skip',/^미정/.test(ans));el.classList.toggle('current',d===cur);
+      const b=document.createElement('button');b.type='button';b.className='nstep';b.disabled=busy;b.title=ans?`${d.question}\n→ ${ans}`:d.question;const t1=document.createElement('b');t1.textContent=d.title;const t2=document.createElement('span');t2.textContent=ans||'아직 답하지 않았어요';b.append(t1,t2);b.onclick=()=>goStep(definitions.indexOf(d));el.append(b);
+      if(ans){const x=document.createElement('button');x.type='button';x.className='ndel';x.textContent='✕';x.disabled=busy;x.setAttribute('aria-label',`${d.title} 답변 지우기`);x.onclick=()=>removeAnswer(d.id);el.append(x);}}
+    host.append(el);});
+  if(mapStepSeen!==state.step){mapStepSeen=state.step;mapFocus();}
+}
+$('map-expand').onclick=()=>{Planning.groups.forEach((_,g)=>mapOpen.add(g));renderMap();};
+$('map-collapse').onclick=()=>{mapOpen.clear();const c=definitions[state.step];if(c)mapOpen.add(c.group);renderMap();};
+$('cancel-edit').onclick=()=>{if(!busy)goStep(firstUnanswered());};
 function render(){
   renderProjects();
     const messages=$('messages');messages.replaceChildren();let shown=0;state.messages.forEach((m,index)=>{if(m.role==='user'&&m.kind!=='conversation')return;shown++;const div=document.createElement('div');div.className=`message ${m.role==='user'?'user':'assistant'}`;const del=document.createElement('button');del.type='button';del.className='message-delete';del.textContent='삭제';del.setAttribute('aria-label','이 메시지 삭제');del.disabled=busy;del.onclick=()=>{state.messages.splice(index,1);persist();render();};if(m.role!=='user'){const label=document.createElement('span');label.className='message-label';label.textContent='Oni 코치';div.append(label);const {body,choices}=splitChoices(m.text);div.append(renderMd(body));if(choices.length){const row=document.createElement('div');row.className='md-choices';choices.forEach(c=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=c;b.disabled=busy;b.onclick=()=>{$('chat-input').value=c;$('chat-input').focus();$('chat-notice').textContent='선택한 내용을 입력창에 넣었어요. 고쳐 쓴 뒤 전송하면 답변으로 반영됩니다.';};row.append(b);});div.append(row);}}else div.append(document.createTextNode(m.text));div.append(del);messages.append(div);});$('clear-chat').hidden=!shown;$('clear-chat').disabled=busy;
   $('steps').replaceChildren();
-  Planning.groups.forEach((group,g)=>{const wrapper=document.createElement('details');wrapper.open=definitions[state.step]?.group===g;const summary=document.createElement('summary');const members=Planning.visibleSteps(state.answers).filter(d=>d.group===g);summary.textContent=`${g+1}. ${group}  ${members.filter(d=>state.answers[d.id]).length}/${members.length}`;wrapper.append(summary);members.forEach(def=>{const i=definitions.indexOf(def);const button=document.createElement('button');button.className=i===state.step?'current':'';button.disabled=busy;const dot=document.createElement('span');dot.className='step-dot';dot.textContent=state.answers[def.id]?'✓':'·';button.append(dot,document.createTextNode(def.title));button.onclick=()=>goStep(i);wrapper.append(button);});$('steps').append(wrapper);});
+  Planning.groups.forEach((group,g)=>{const part=Planning.parts.find(p=>p.groups[0]===g);if(part){const pl=document.createElement('div');pl.className='steps-part';pl.textContent=part.title;$('steps').append(pl);}const wrapper=document.createElement('details');wrapper.open=definitions[state.step]?.group===g;const summary=document.createElement('summary');const members=Planning.visibleSteps(state.answers).filter(d=>d.group===g);summary.textContent=`${g+1}. ${group}  ${members.filter(d=>state.answers[d.id]).length}/${members.length}`;wrapper.append(summary);members.forEach(def=>{const i=definitions.indexOf(def);const button=document.createElement('button');button.className=i===state.step?'current':'';button.disabled=busy;const dot=document.createElement('span');dot.className='step-dot';dot.textContent=state.answers[def.id]?'✓':'·';button.append(dot,document.createTextNode(def.title));button.onclick=()=>goStep(i);wrapper.append(button);});$('steps').append(wrapper);});
   const def=definitions[state.step];$('chips').replaceChildren();$('custom-wrap').hidden=true;
   const visible=Planning.visibleSteps(state.answers);
   $('step-count').textContent=def?`${Planning.groups[def.group]} · ${visible.indexOf(def)+1}/${visible.length}`:'답변 검토';
@@ -102,9 +163,12 @@ function render(){
   let lastGroup='';options.forEach(raw=>{const option=typeof raw==='string'?{label:raw,value:raw}:raw;if(option.group&&option.group!==lastGroup){const label=document.createElement('div');label.className='chip-group-label';label.textContent=option.group;$('chips').append(label);lastGroup=option.group;}const button=document.createElement('button');button.className='chip';button.textContent=option.label;button.disabled=busy;button.setAttribute('aria-pressed',String(selected.has(option.value)));button.onclick=()=>{if(option.value==='기타 · 직접 입력'){$('custom-wrap').hidden=false;$('custom-subject').focus();return;}if(def.multi){selected.has(option.value)?selected.delete(option.value):selected.add(option.value);button.setAttribute('aria-pressed',String(selected.has(option.value)));$('continue').disabled=!selected.size;}else accept(option.value);};$('chips').append(button);});
   $('send').disabled=busy;$('ai-refine').disabled=busy;$('new-chat').disabled=busy;
   $('chat-input').disabled=busy;$('edit-doc').disabled=busy;
+  $('cancel-edit').hidden=!def||!isAnswered(def.id)||firstUnanswered()===state.step;$('cancel-edit').disabled=busy;
+  renderStackCard(def);renderAnswerLog();renderMap();renderUsage();
   renderDocument();
 }
 function accept(value){const def=definitions[state.step];if(!def)return;
+  const wasAnswered=isAnswered(def.id);
   const changed=JSON.stringify(state.answers[def.id])!==JSON.stringify(value);
   if(def.id==='school'&&changed){delete state.answers.grades;const list=Planning.subjectsFor(value);if(Array.isArray(state.answers.subjects)){const keep=state.answers.subjects.filter(x=>list.includes(x)||state.extraSubjects.includes(x));if(keep.length!==state.answers.subjects.length){if(keep.length)state.answers.subjects=keep;else delete state.answers.subjects;delete state.answers.activity;delete state.answers.method;}}}
   if(def.id==='subjects'&&changed){delete state.answers.activity;delete state.answers.method;}
@@ -112,23 +176,39 @@ function accept(value){const def=definitions[state.step];if(!def)return;
   if(def.id==='teacher'&&String(value).includes('별도 관리 화면 없음'))delete state.answers.teacherView;
   if(changed&&['school','subjects','activity','method'].includes(def.id)&&state.answers.flow){$('chat-notice').textContent='활동의 방향을 바꿨어요. 기존 자료·활동 흐름·규칙은 보존했으니 새 방향에 맞는지 다시 확인해 주세요.';}
   state.answers[def.id]=value;if(state.draft)state.draftStale=true;
-  state.step++;while(definitions[state.step]?.when&&!definitions[state.step].when(state.answers))state.step++;selected=new Set(Array.isArray(state.answers[definitions[state.step]?.id])?state.answers[definitions[state.step].id]:[]);persist();render();scrollChat();
+  if(wasAnswered)state.step=firstUnanswered();else{state.step++;while(definitions[state.step]?.when&&!definitions[state.step].when(state.answers))state.step++;}
+  syncSelected();persist();render();scrollChat();
+  if(wasAnswered&&changed)toast('답변을 바꿨어요. 진행하던 질문으로 돌아왔어요.');
 }
 function scrollChat(){requestAnimationFrame(()=>{const container=$('chat-scroll');const question=$('question-card');if(question.getBoundingClientRect){container.scrollTo({top:container.scrollTop+question.getBoundingClientRect().top-container.getBoundingClientRect().top-20,behavior:'smooth'});}else container.scrollTo({top:container.scrollHeight,behavior:'smooth'});});}
-function panel(name){$('document-panel').hidden=name!=='document';$('settings-panel').hidden=name!=='settings';$('document-tab').setAttribute('aria-selected',String(name==='document'));$('settings-tab').setAttribute('aria-selected',String(name==='settings'));$('detail-panel').classList.add('mobile-open');}
+function panel(name){['map','document','settings'].forEach(n=>{$(n+'-panel').hidden=name!==n;$(n+'-tab').setAttribute('aria-selected',String(name===n));});$('detail-panel').classList.add('mobile-open');if(name==='map')mapFocus();}
 function keySettings(){panel('settings');$('api-fields').hidden=false;$('api-settings').setAttribute('aria-expanded','true');$('api-key').focus();}
 function updateConnection(){ $('key-badge').textContent=apiKey?'연결됨 ✓':'연결 안 됨 ›';$('mode-label').lastChild.textContent=apiKey?' Gemini 연결됨':' 기본 질문 모드';}
 const noThinking=new Set();
 function thinkingFor(m){if(noThinking.has(m))return null;if(/gemini-3/.test(m))return {thinkingLevel:'minimal'};if(/2\.5-flash/.test(m))return {thinkingBudget:0};return null;}
+/* 무료 등급 보호: 호출 횟수를 세어 보여주고, 불필요한 재시도(잘못된 키·한도 초과)로 호출을 낭비하지 않는다 */
+const USAGE_KEY='oni.usage.v1';let sessionCalls=0;
+const todayKey=()=>new Date().toLocaleDateString('sv');
+function todayCalls(){try{const u=JSON.parse(localStorage.getItem(USAGE_KEY)||'null');return u&&u.date===todayKey()?u.count:0;}catch{return 0;}}
+function countCall(){sessionCalls++;try{localStorage.setItem(USAGE_KEY,JSON.stringify({date:todayKey(),count:todayCalls()+1}));}catch{}renderUsage();}
+function renderUsage(){const el=$('usage-info');if(el)el.textContent=`이 브라우저에서 AI를 호출한 횟수: 오늘 ${todayCalls()}회 · 이번 접속 ${sessionCalls}회 (같은 키를 다른 곳에서 쓴 횟수는 포함되지 않아요)`;}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function requestAI(prompt,key=apiKey,chosenModel=model,maxTokens=16000,schema=null){
-  const ctl=new AbortController();const timeout=setTimeout(()=>ctl.abort(),90000);
-  const levels=[{think:true,schema:true},{think:false,schema:true},{think:false,schema:false}];let li=0;
-  try{let response;for(let attempt=0;;attempt++){
+  const ctl=new AbortController();const timeout=setTimeout(()=>ctl.abort(),120000);
+  const levels=[{think:true,schema:true},{think:false,schema:true},{think:false,schema:false}];let li=0,waited429=false;
+  try{let response,detail='';for(let attempt=0;;){
       const level=levels[li];const cfg={maxOutputTokens:maxTokens};const think=level.think&&thinkingFor(chosenModel);if(think)cfg.thinkingConfig=think;if(schema){cfg.responseMimeType='application/json';if(level.schema)cfg.responseSchema=schema;}
+      countCall();
       response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(chosenModel)}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:cfg}),signal:ctl.signal});
-      if(response.status===400&&li<levels.length-1){if(think)noThinking.add(chosenModel);li++;if(!levels[li].think||levels[li].schema!==level.schema||true)continue;}
-      if(![500,503].includes(response.status)||attempt>=3)break;await new Promise(r=>setTimeout(r,1000*(attempt+1)));}
-    if(!response.ok){const messages={400:'키 또는 모델 설정을 확인해 주세요.',401:'유효한 API 키를 입력해 주세요.',403:'키 권한이나 API 사용 권한을 확인해 주세요.',404:'이 모델을 찾을 수 없습니다. 설정에서 다른 모델을 선택해 주세요.',500:'AI 서버에 일시적인 문제가 있어요. 잠시 후 다시 시도하거나 다른 모델을 선택해 주세요.',503:'선택한 모델이 지금 혼잡해요(자동으로 재시도했어요). 잠시 후 다시 시도하거나 설정에서 다른 모델을 선택해 주세요.',429:'무료 사용량 또는 요청 한도에 도달했어요. 잠시 후 다시 시도하거나 AI Studio에서 한도를 확인해 주세요.'};throw new Error(messages[response.status]||'AI 서비스가 응답하지 않아요. 잠시 후 다시 시도해 주세요.');}
+      if(response.ok)break;
+      try{detail=await response.text();}catch{detail='';}
+      /* 400은 thinking·스키마 설정 문제일 때만 낮춰서 다시 시도한다(잘못된 키는 바로 중단) */
+      if(response.status===400&&li<levels.length-1&&/thinking|responseSchema|response_schema|schema|mime/i.test(detail)&&!/API key/i.test(detail)){if(think)noThinking.add(chosenModel);li++;continue;}
+      /* 429는 분당 한도일 때만 안내된 시간(짧을 때)만큼 기다렸다가 한 번만 다시 시도한다. 하루 한도는 즉시 중단 */
+      if(response.status===429&&!waited429&&!/PerDay|per day|daily/i.test(detail)){const m=detail.match(/"retryDelay":\s*"(\d+(?:\.\d+)?)s"/);const secs=m?Number(m[1]):0;if(secs>0&&secs<=30){waited429=true;await sleep(secs*1000+500);continue;}}
+      if([500,503].includes(response.status)&&attempt<2){attempt++;await sleep(1500*attempt);continue;}
+      break;}
+    if(!response.ok){const daily=response.status===429&&/PerDay|per day|daily/i.test(detail);const messages={400:'키 또는 모델 설정을 확인해 주세요.',401:'유효한 API 키를 입력해 주세요.',403:'키 권한이나 API 사용 권한을 확인해 주세요.',404:'이 모델을 찾을 수 없습니다. 설정에서 다른 모델을 선택해 주세요.',500:'AI 서버에 일시적인 문제가 있어요. 잠시 후 다시 시도하거나 다른 모델을 선택해 주세요.',503:'선택한 모델이 지금 혼잡해요(자동으로 재시도했어요). 잠시 후 다시 시도하거나 설정에서 다른 모델을 선택해 주세요.',429:daily?'오늘의 무료 사용량을 모두 썼어요. 내일 다시 시도하거나 설정에서 다른 모델을 선택해 보세요. 기획서 초안 다운로드는 키 없이도 가능해요.':'무료 등급의 분당 요청 한도에 도달했어요. 1분쯤 기다린 뒤 다시 시도하거나, 설정에서 더 가벼운 모델(Flash-Lite 등)을 선택해 보세요.'};throw new Error(messages[response.status]||'AI 서비스가 응답하지 않아요. 잠시 후 다시 시도해 주세요.');}
     const data=await response.json();if(data.candidates?.[0]?.finishReason==='MAX_TOKENS')throw new Error('응답이 길어 중간에 멈췄어요. 기존 문서는 유지됩니다. 자료 수나 범위를 줄여 다시 요청해 주세요.');const result=data.candidates?.[0]?.content?.parts?.filter(p=>!p.thought).map(p=>p.text||'').join('');if(!result)throw new Error('AI가 답변을 생성하지 못했어요. 입력을 바꿔 다시 시도해 주세요.');return redact(result);
   }catch(error){if(error.name==='AbortError')throw new Error('응답 대기 시간이 지났어요. 내용은 보관되어 있으니 다시 시도해 주세요.');if(error instanceof TypeError)throw new Error('네트워크 연결을 확인해 주세요. 작성 중인 내용은 유지됩니다.');throw error;}finally{clearTimeout(timeout);}
 }
@@ -136,18 +216,33 @@ function parseJSON(text){const t=text.trim().replace(/^```(?:json)?\s*/i,'').rep
 const SECTION_SCHEMA={type:'OBJECT',properties:{sections:{type:'ARRAY',items:{type:'OBJECT',properties:{n:{type:'INTEGER'},markdown:{type:'STRING'}},required:['n','markdown']}}},required:['sections']};
 const COACH_SCHEMA={type:'OBJECT',properties:{answer:{type:'STRING'},choices:{type:'ARRAY',items:{type:'STRING'}}},required:['answer','choices']};
 const DRAFT_SCHEMA={type:'OBJECT',properties:{draft:{type:'STRING'}},required:['draft']};
+/* 기존 문서를 "## 번호." 단위로 나눈다. 필요한 섹션만 AI에 보내 토큰과 호출을 줄인다 */
+function draftMarks(text){const marks=[];const re=/^##\s*(\d)[.．]/gm;let m;while((m=re.exec(text)))marks.push({n:Number(m[1]),start:m.index});marks.forEach((k,i)=>{k.end=i+1<marks.length?marks[i+1].start:text.length;});return marks;}
+function pickSections(text,nums){if(!text)return '';const marks=draftMarks(text);return nums.map(n=>marks.find(k=>k.n===n)).filter(Boolean).map(k=>text.slice(k.start,k.end).trim()).join('\n\n');}
+function replaceSections(text,got){let out=text;const missing=[];Object.entries(got).forEach(([n,md])=>{const k=draftMarks(out).find(x=>x.n===Number(n));if(k)out=out.slice(0,k.start)+md.trim()+'\n\n'+out.slice(k.end);else missing.push(md.trim());});return (out.trim()+(missing.length?'\n\n'+missing.join('\n\n'):'')).trim();}
+const SECTION_TITLES={1:'기본 수업 정보',2:'사용 환경 및 접속 방식',3:'활동 구성·실행 방식과 진행 규칙',4:'핵심 구현 기능: 교사 화면과 학생 화면',5:'디자인 및 화면 스타일',6:'운영 조건·기술 구성',7:'완료 기준'};
+const withTitle=(n,md)=>new RegExp(`^##\\s*${n}[.．]`).test(md)?md:`## ${n}. ${SECTION_TITLES[n]}\n${md}`;
 async function refine(instruction){
   if(!apiKey){keySettings();$('key-status').textContent='상세 PRD 생성에는 개인 API 키가 필요해요. 답변 기반 초안은 키 없이 다운로드할 수 있어요.';return;}
-  if(busy)return;busy=true;render();$('chat-notice').textContent='세 부분으로 나누어 동시에 작성하고 있어요…';
+  if(busy)return;busy=true;render();$('chat-notice').textContent='상세 PRD를 작성하고 있어요… (AI 호출 4회, 2번씩 나누어 진행)';
   try{const current=state.draft||'';const got={};let done=0;
-    const run=async(nums,context='')=>{const json=parseJSON(await requestAI(Planning.promptPart(state.answers,current,instruction,nums,context),apiKey,model,8192,SECTION_SCHEMA));(json.sections||[]).forEach(x=>{if(nums.includes(Number(x.n))&&x.markdown)got[Number(x.n)]=String(x.markdown).trim();});done++;$('chat-notice').textContent=`상세 PRD 작성 중… (${done}/4)`;};
-    await Promise.all(Planning.prdParts.map(nums=>run(nums)));
-    await run([7],got[3]||'');
-    const titles={1:'기본 수업 정보',2:'사용 환경 및 접속 방식',3:'활동 구성·실행 방식과 진행 규칙',4:'핵심 구현 기능: 교사 화면과 학생 화면',5:'디자인 및 화면 스타일',6:'운영 조건·추가 고려사항',7:'완료 기준'};
+    const run=async(nums,context='')=>{const json=parseJSON(await requestAI(Planning.promptPart(state.answers,pickSections(current,nums),instruction,nums,context),apiKey,model,8192,SECTION_SCHEMA));(json.sections||[]).forEach(x=>{if(nums.includes(Number(x.n))&&x.markdown)got[Number(x.n)]=String(x.markdown).trim();});done++;$('chat-notice').textContent=`상세 PRD 작성 중… (${done}/4)`;};
+    await Promise.all(Planning.prdWaves[0].map(nums=>run(nums)));
+    await Promise.all(Planning.prdWaves[1].map(nums=>run(nums,nums.includes(7)?got[3]||'':'')));
     const missing=[1,2,3,4,5,6,7].filter(n=>!got[n]);if(missing.length)throw new Error(`일부 섹션(${missing.join(', ')}번)이 만들어지지 않았어요. 기존 문서를 보존했으니 다시 생성해 주세요.`);
-    const result=[1,2,3,4,5,6,7].map(n=>new RegExp(`^##\\s*${n}[.．]`).test(got[n])?got[n]:`## ${n}. ${titles[n]}\n${got[n]}`).join('\n\n');
+    const result=[1,2,3,4,5,6,7].map(n=>withTitle(n,got[n])).join('\n\n');
     state.previousDraft=markdown();state.draft=result;state.draftStale=false;
-    addMessage('assistant','상세 PRD 초안을 작성했어요. 오른쪽 문서의 [제안·교사 검토 필요] 부분과 자료·정답 연결을 확인해 주세요. 바꾸고 싶은 점을 여기서 이야기하면 문서를 수정할 수 있어요.');persist();$('chat-notice').textContent='';
+    addMessage('assistant','상세 PRD 초안을 작성했어요. 기획서 탭의 [제안·교사 검토 필요] 부분과 자료·정답 연결을 확인해 주세요. 바꾸고 싶은 점을 여기서 이야기하면 문서에서 해당 부분만 수정해요(AI 호출 1회).');persist();$('chat-notice').textContent='';
+  }catch(error){$('chat-notice').textContent=error.message;}finally{busy=false;render();scrollChat();}
+}
+/* 상세 PRD가 있을 때의 수정 요청: 전체를 다시 만들지 않고 한 번의 호출로 바뀌는 섹션만 고친다 */
+async function editDraft(instruction){
+  if(busy)return;busy=true;render();$('chat-notice').textContent='문서에서 바꿀 부분만 수정하고 있어요… (AI 호출 1회)';
+  try{const json=parseJSON(await requestAI(Planning.editPrompt(state.answers,state.draft,instruction),apiKey,model,8192,SECTION_SCHEMA));
+    const got={};(json.sections||[]).forEach(x=>{const n=Number(x.n);if(n>=1&&n<=7&&x.markdown)got[n]=withTitle(n,String(x.markdown).trim());});
+    if(!Object.keys(got).length)throw new Error('바꿀 부분을 찾지 못했어요. 어느 부분을 어떻게 바꿀지 조금 더 구체적으로 적어 주세요.');
+    state.previousDraft=markdown();state.draft=replaceSections(state.draft,got);state.draftStale=false;
+    addMessage('assistant',`문서의 ${Object.keys(got).map(n=>`${n}번`).join(', ')} 섹션을 고쳤어요. 기획서 탭에서 확인해 주세요. 마음에 들지 않으면 “이전 문서”로 되돌릴 수 있어요.`);persist();$('chat-notice').textContent='';
   }catch(error){$('chat-notice').textContent=error.message;}finally{busy=false;render();scrollChat();}
 }
 async function coach(text,proposal=false){
@@ -160,7 +255,7 @@ async function coach(text,proposal=false){
   }catch(error){$('chat-notice').textContent=error.message;return false;}finally{busy=false;render();scrollChat();}
 }
 function setChatMode(mode){return;chatMode=mode;$('answer-mode').setAttribute('aria-pressed',String(mode==='answer'));$('coach-mode').setAttribute('aria-pressed',String(mode==='coach'));$('composer-label').textContent=mode==='coach'?'코치와 편하게 의논하세요':'직접 이야기해 주세요';if(!busy)render();}
-function processText(text){const def=definitions[state.step];if(!def){if(apiKey){addMessage('user',text);persist();refine(text);}else{addMessage('user',text);state.draft=markdown()+'\n\n## 추가 요청\n'+text;addMessage('assistant','추가 요청을 기획서에 기록했어요. AI와 대화하며 보완하려면 오른쪽 설정에서 API 키를 연결해 주세요.');persist();render();scrollChat();}return;}
+function processText(text){const def=definitions[state.step];if(!def){if(apiKey){addMessage('user',text);persist();state.draft?editDraft(text):refine(text);}else{addMessage('user',text);state.draft=markdown()+'\n\n## 추가 요청\n'+text;addMessage('assistant','추가 요청을 기획서에 기록했어요. AI와 대화하며 보완하려면 오른쪽 설정에서 API 키를 연결해 주세요.');persist();render();scrollChat();}return;}
   if(def.id==='school'){const match=[['초등','초등학교'],['중학','중학교'],['고등','고등학교']].filter(([word])=>text.includes(word));if(match.length!==1){$('chat-notice').textContent='초등학교·중학교·고등학교 중 하나를 먼저 선택해 주세요. 학년은 다음 단계에서 여러 개 선택할 수 있어요.';return false;}const grades=[...text.matchAll(/[1-6]/g)].map(m=>`${m[0]}학년`).filter(g=>match[0][1]==='초등학교'||Number(g[0])<=3);accept(match[0][1]);if(grades.length){state.answers.grades=[...new Set(grades)];selected=new Set(state.answers.grades);persist();render();}return;}
   if(def.id==='grades'){const numbers=[...text.matchAll(/[1-6]/g)].map(m=>`${m[0]}학년`);const range=text.match(/([1-6])\s*(?:~|-|부터)\s*([1-6])/);if(range)for(let n=Number(range[1]);n<=Number(range[2]);n++)numbers.push(`${n}학년`);const valid=[...new Set(numbers)].filter(g=>gradeOptions().includes(g));if(!valid.length){$('chat-notice').textContent='해당 학교급의 학년을 선택하거나 숫자로 입력해 주세요. 예: 1, 2학년';return false;}accept(valid);return;}
   if(def.multi){const parts=def.id==='subjects'?text.split(/[,，\n]/).map(s=>s.trim()).filter(Boolean):[text];accept([...new Set([...selected,...parts])]);}else accept(text);
@@ -170,7 +265,7 @@ $('chat-input').onkeydown=event=>{if(event.key==='Enter'&&!event.shiftKey&&!even
 $('continue').onclick=()=>{if(selected.size)accept([...selected]);};
 $('add-subject').onclick=()=>{const value=$('custom-subject').value.trim();if(!value)return;if(/AIza[\w-]{20,}/.test(value)){toast('API 키는 설정에 입력해 주세요.');return;}if(!state.extraSubjects.includes(value))state.extraSubjects.push(value);selected.add(value);$('custom-subject').value='';persist();render();};
 $('custom-subject').onkeydown=e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();$('add-subject').click();}};
-$('document-tab').onclick=()=>panel('document');$('settings-tab').onclick=()=>panel('settings');
+$('map-tab').onclick=()=>panel('map');$('document-tab').onclick=()=>panel('document');$('settings-tab').onclick=()=>panel('settings');
 $('panel-toggle').onclick=()=>{$('detail-panel').classList.toggle('mobile-open');};
 $('api-settings').onclick=()=>{const open=$('api-fields').hidden;$('api-fields').hidden=!open;$('api-settings').setAttribute('aria-expanded',String(open));if(open)$('api-key').focus();};
 $('toggle-key').onclick=()=>{const show=$('api-key').type==='password';$('api-key').type=show?'text':'password';$('toggle-key').textContent=show?'숨기기':'보기';$('toggle-key').setAttribute('aria-label',show?'API 키 숨기기':'API 키 표시');};
@@ -201,7 +296,7 @@ $('ask-ai').onclick=async()=>{if(busy)return;const text=$('chat-input').value.tr
 $('clear-chat').onclick=()=>{if(busy)return;state.messages=[];persist();render();toast('대화를 지웠어요. 기획 답변은 그대로 유지돼요.');};
 $('restore-draft').onclick=()=>{if(busy)return;const current=markdown();state.draft=state.previousDraft;state.previousDraft=current;state.draftStale=true;persist();render();toast('이전 문서를 복원했어요. 최신 답변과 맞는지 확인해 주세요.');};
 
-$('clear-answer').onclick=()=>{const def=definitions[state.step];if(!def||busy)return;delete state.answers[def.id];if(def.id==='school')delete state.answers.grades;if(def.id==='subjects'){delete state.answers.activity;delete state.answers.method;}if(def.id==='activity')delete state.answers.method;if(def.id==='teacher')delete state.answers.teacherView;selected=new Set();state.draftStale=!!state.draft;$('chat-input').value='';$('chat-notice').textContent='';persist();render();toast('이전에 정한 내용을 지웠어요. 다시 선택하거나 입력해 주세요.');};
+$('clear-answer').onclick=()=>{const def=definitions[state.step];if(def)removeAnswer(def.id);};
 
 $('export-projects').onclick=()=>{persist();const blob=new Blob([JSON.stringify({app:'oni-studio',version:1,items:projects},null,1)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='oni-studio-projects.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 $('import-projects').onclick=()=>$('import-file').click();

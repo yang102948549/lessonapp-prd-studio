@@ -111,7 +111,7 @@ globalThis.Planning = (() => {
     feedback:v=>[`${iga(v.evidence)}부족하면 ${eul(v.mat)}다시 보도록 안내`,`${eul(v.product)}열린 답으로 두고 자동 채점하지 않기`,'맞은 부분은 유지하고 바꿀 부분만 안내'],
     interaction:v=>[v.tool,`${eul(v.evidence)}골라 짧은 글로 쓰기`,`${eul(v.product)}작성하고 수정하기`,`${v.mat}에 관한 객관식 선택·투표`,`친구의 ${v.product}에 답글·공감 남기기`,'자료를 읽고 말이나 종이로 답하기'],
     input:v=>[`${v.product} 300자 이내 · 공백만 제출 불가 · 결과에서 수정 가능`,`${wagwa(v.evidence)}이유를 따로 입력 · 제한은 직접 정하기`,'카드 선택만 사용 · 선택 누락 시 안내'],
-    output:v=>[`${eul(v.product)}결과 화면에 모아 발표`,`초안과 수정한 ${eul(v.product)}나란히 보고 변화 설명`,`${eul(v.evidence)}한눈에 모아 보기`,`${eul(v.product)}파일로 내려받아 공유`],
+    output:v=>[`${eul(v.product)}결과 화면에 모아 발표`,`초안과 수정한 ${eul(v.product)}나란히 보고 변화 설명`,`${eul(v.evidence)}한눈에 모아 보기`,`${eul(v.product)}인쇄하기 좋은 화면으로 보기`],
     teacherView:v=>[`${eul(v.product)}카드로 모아보기`,`${eul(v.evidence)}키워드로 모아보기`],
     features:v=>[`${eul(v.mat)}다시 보기`,`${eul(v.evidence)}표시·강조하는 기능`,`${eul(v.product)}임시 보관하고 이어서 하기`],
     design:v=>[v.view,`${iga(v.mat)}가장 먼저 보이는 카드 중심 화면`],
@@ -139,68 +139,150 @@ globalThis.Planning = (() => {
     {id:'experiment',label:'탐구·문제 해결',match:/조건|예상|확인|풀이|오류|문제|전략|절차|순서|관계|결과|규칙 바꾸|움직임/,methods:['예상한 뒤 조건을 바꾸어 결과 비교','풀이 또는 절차를 배열하고 실행 결과 확인','서로 다른 해결 방법을 비교하고 설명','오류가 있는 과정을 찾아 수정하기'],materials:['조작할 조건과 그에 따른 결과 규칙','순서를 바꿀 수 있는 절차 카드','다양한 풀이 과정과 오류 사례','측정값·관찰값을 비교할 표'],flow:['문제 이해 → 예상 → 시도 → 결과 비교 → 설명','과정 확인 → 오류 찾기 → 수정 → 재실행 → 정리'],rules:['한 번에 바꾸는 조건의 범위 정하기','시도 전후 조건과 결과를 함께 남기기','초기 조건으로 되돌리는 버튼 제공','정답뿐 아니라 풀이 과정도 남기기'],feedback:['어느 단계부터 다시 볼지 힌트 제공','틀린 부분만 수정하고 맞는 과정 유지','결과가 달라진 이유를 설명하도록 질문']},
     {id:'reflect',label:'실천·성찰',match:/실천|기록|계획|돌아|경험|경로|관심|습관|건강|요청/,methods:['현재 상황을 돌아보고 실천 계획 세우기','여러 선택을 살펴보고 나의 계획 작성','활동 전후 생각을 비교해 기록하기','상황에 맞는 행동을 고르고 이유 설명'],materials:['생활 상황을 담은 가상 사례','선택 가능한 행동과 도움 자원','목표·방법·시기를 적는 계획 양식','활동 전후를 비교하는 질문'],flow:['상황 이해 → 선택 탐색 → 나의 계획 → 공유 → 돌아보기'],rules:['개인 경험 공개 없이 가상 사례로 참여 가능','계획을 저장하기 전에 다시 수정 가능','공유 여부를 학생이 선택'],feedback:['실행할 행동과 시기가 구체적인지 되묻기','개인 경험·성향을 정답으로 평가하지 않기','도움을 받을 수 있는 방법을 함께 안내']}
   ];
-  const groups=['수업 맥락','활동 방향','활동 설계','화면과 규칙','운영 조건','최종 검토'];
+  const parts=[{title:'1부 · 수업 설계',groups:[0,1,2]},{title:'2부 · 웹앱 구상',groups:[3,4,5,6]}];
+  const groups=['수업 맥락','활동 설계','학생 참여','사용 상황','데이터와 공유','교사 화면과 화면 표현','구성과 마무리'];
   const step=(id,title,group,question,help,options=[],more={})=>({id,title,group,question,help,options,placeholder:'선택지에 없는 내용도 자유롭게 이야기해 주세요.',...more});
+  /* 결과를 기기 밖에 저장·공유해야 하는지(교사 취합·친구 공유·누적). 미정이면 필요하다고 가정 */
+  const needsShare=a=>{const r=value(a,'results');return !r||/^미정/.test(r)||/교사가 모아|친구|누적/.test(r);};
   const steps=[
     step('school','학교급',0,'어느 학교의 수업을 준비하고 계신가요?','학교급을 선택하면 해당 학년이 나타나요.',['초등학교','중학교','고등학교'],{placeholder:'예: 초등학교 5, 6학년이 함께 참여해요'}),
     step('grades','대상 학년',0,'어떤 학년이 함께하나요?','복수 학년을 선택할 수 있어요. 선택 후 완료를 눌러 주세요.',[],{multi:true,placeholder:'예: 5학년과 6학년'}),
     step('subjects','과목',0,'어떤 과목의 수업인가요?','여러 과목을 고르면 과목별 활동 아이디어를 함께 보여드려요.',Object.keys(activities).concat('기타 · 직접 입력'),{multi:true,placeholder:'목록에 없는 과목도 입력하세요. 예: 환경, 인공지능 기초'}),
     step('idea','단원과 주제',0,'어떤 내용으로 수업하려고 하나요?','단원·주제와 학생들이 어려워하는 부분을 알려주세요. 교과서나 성취기준은 알고 계신 경우에만 적어 주세요.',[],{placeholder:'예: 인권 침해의 원인을 개인 행동과 공동체의 환경에서 함께 살펴보는 수업'}),
     step('objective','배움의 목표',0,'활동을 마친 학생이 무엇을 할 수 있으면 좋을까요?','주제에 맞는 문장으로 덧붙이면 더 좋아요. 평가 점수보다 활동에서 일어날 배움을 정합니다.',['자료에서 근거를 찾아 설명하기','서로 다른 관점을 비교하고 생각 수정하기','원리나 규칙을 발견하고 적용하기','여러 해결 방법을 비교하고 대안 제안하기','생각을 결과물로 표현하고 개선하기','배운 내용을 생활 속 실천과 연결하기'],{multi:true}),
+
     step('activity','활동 아이디어',1,'어떤 활동을 중심으로 구성할까요?','과목에 맞는 넓은 활동 유형이에요. 단원에 맞게 바꿀 수 있고 여러 활동을 결합할 수도 있어요.',[],{multi:true,placeholder:'예: 사례를 탐색한 뒤 관점을 비교하고 해결책을 제안하고 싶어요'}),
     step('method','활동 방식',1,'선택한 활동을 어떤 방식으로 풀어갈까요?','앞서 고른 활동에 맞는 진행 방식을 제안해요. 상황·인물·정답은 아직 정하지 않습니다.',[],{multi:true}),
     step('duration','활동 시간',1,'웹앱을 수업에서 얼마나 사용할까요?','전체 차시가 아니라 앱으로 활동할 시간입니다. 나중에 단계별 시간 합계도 맞춰볼게요.',['10분 · 짧게 탐색하고 정리','15분 · 핵심 활동 한 가지','25분 · 탐색·활동·공유','40분 · 한 차시 전체','여러 차시에 나누어 진행'],{placeholder:'예: 총 25분. 안내 3분, 탐색 10분, 정리 7분, 공유 5분'}),
-    step('participants','참여 규모',1,'몇 명이 어떤 단위로 참여하나요?','전체 인원, 개인·짝·모둠 구성과 기기 공유 인원을 적어주세요.',['개인별 활동 · 인원은 추후 확정','2인 1조 · 전체 인원은 추후 확정','3~4인 모둠 · 전체 인원은 추후 확정','교사 화면을 함께 보며 전체 활동'],{placeholder:'예: 28명, 3~4인 모둠, 모둠당 태블릿 1대'}),
-    step('devices','기기와 참여',1,'학생들은 어떤 기기로 참여하나요?','공유 기기라면 조작하지 않는 학생도 참여할 수 있는 역할을 다음에 정해요.',['PC·크롬북에서 개인별 조작','태블릿을 모둠에서 함께 사용','스마트폰에서 개인별 조작','교사 화면만 보고 말·종이로 참여','PC와 태블릿 모두 지원']),
-    step('access','접속 방법',1,'학생은 어떤 방법으로 들어오나요?','신원 확인이 필요한 활동인지 먼저 생각해요. QR·링크는 접속 수단이고, 로그인은 별도 선택입니다.',['QR·링크로 바로 시작 · 로그인과 이름 입력 없음','QR·링크 접속 후 모둠 코드 입력','닉네임으로 참여 · 실제 이름은 받지 않음','구글 계정 로그인 필요 · 권한과 운영 환경 확인','교사 화면만 사용 · 학생 입장 절차 없음']),
-    step('roles','역할과 협력',1,'학생들의 역할은 어떻게 나눌까요?','모둠 크기가 달라도 참여할 수 있도록 역할 교대 시점까지 정하면 좋아요.',['개별 활동 · 별도 역할 구분 없음','조작·자료 확인·설명 역할을 단계마다 교대','역할을 정하고 자료나 장소가 바뀔 때 교대','각자 생각을 적은 뒤 모둠 의견으로 합의','학급 공동 활동 · 교사가 조작하고 학생이 의견 제시'],{placeholder:'예: 조작·증거 확인·의견 제시 역할, 2명일 때는 역할을 겸하고 자료가 바뀌면 교대'}),
-    step('story','상황과 도입',2,'학생에게 어떤 상황이나 과제를 제시할까요?','주제에 맞는 도입 문구·과제를 적어주세요. 이야기 없이 개념 탐구로 시작해도 좋아요.',['별도 이야기 없이 탐구 질문으로 시작','일상 속 가상 상황을 보고 문제 찾기','역할을 맡아 자료를 조사하며 시작','작품·자료를 보고 서로 다른 해석으로 시작','해결할 과제와 제작 조건을 먼저 제시'],{placeholder:'도입 화면의 질문, 상황, 등장인물이 있다면 적어주세요. 막막하면 AI와 구체화를 눌러보세요.'}),
-    step('materials','자료와 콘텐츠',2,'학생이 실제로 읽거나 다룰 자료는 무엇인가요?','자료 종류뿐 아니라 수량·원문·선택지를 구체화해요. 원문이 없으면 AI가 창작 초안을 제안할 수 있어요.',[],{multi:true,placeholder:'예: 사례 3개, 사례마다 자료 카드 2개. 자료 원문을 붙여넣거나 필요한 내용을 설명해 주세요.'}),
-    step('flow','화면과 순서',2,'학생은 어떤 순서로 활동하나요?','각 단계에서 보는 내용·하는 행동·결과를 정합니다. 정한 총시간에 맞춰 단계별 시간도 적어주세요.',[],{placeholder:'예: 도입 3분 → 자료 조사 10분 → 근거 연결 7분 → 해결 제안·공유 5분'}),
-    step('control','진행 제어',3,'다음 단계로 넘어가는 시점은 누가 정하나요?','각 기기에서 독립적으로 진행할지, 교사가 동시에 제어할지 정해요.',['학생이 각자의 속도로 진행','모둠 안에서 합의한 뒤 다음 단계 진행','교사가 공개하면 모든 학생이 다음 단계로 이동','학생 응답을 실시간으로 모아 수업 흐름 조절']),
-    step('rules','이동과 선택 규칙',3,'다음 화면으로 넘어가는 조건은 무엇인가요?','버튼 활성화 조건, 선택 개수, 이전 단계로 돌아갈 수 있는지까지 정해요.',[],{multi:true,placeholder:'예: 자료 6개를 모두 읽으면 정리 버튼 활성화. 증거는 2개까지 선택, 다시 누르면 해제.'}),
-    step('feedback','확인과 재도전',3,'잘못 선택하거나 도움이 필요할 때 어떻게 안내할까요?','정답이 있는 활동이면 연결 기준과 피드백을, 열린 활동이면 되묻는 질문을 정해요.',[],{multi:true,placeholder:'예: 근거가 틀리면 관련 자료를 다시 보도록 안내하고 맞는 선택은 유지. 횟수 제한 없이 재도전.'}),
-    step('interaction','학생의 조작',3,'학생은 화면에서 어떤 방식으로 참여하나요?','활동에 맞는 입력 방식을 고른 뒤 다음 질문에서 조건을 구체화해요.',['짧은 글 또는 근거 문장 작성','객관식 선택·투표','카드 선택·연결·순서 정렬','수치 입력·슬라이더로 조건 조절','그림 그리기·이미지 첨부','친구 의견을 보고 답글·공감','자료를 읽고 말이나 종이로 답하기'],{multi:true}),
-    step('input','입력과 예외',3,'학생이 작성하는 내용에 어떤 규칙이 필요한가요?','글자 수·빈 입력·수정·중복 제출을 정합니다. 자유 서술은 정답으로 자동 채점하지 않아도 돼요.',['300자 이내 · 공백만 제출 불가 · 결과에서 수정 가능','500자 이내 · 공백만 제출 불가 · 결과에서 수정 가능','짧은 답변과 근거를 별도 입력 · 제한은 직접 정하기','카드 선택만 사용 · 선택 누락 시 안내','글·선택을 함께 사용 · 항목별 조건 직접 정하기'],{placeholder:'예: 300자 이내, 공백만 입력하면 “이유를 한 문장 적어 주세요.” 안내. 수정 후 결과도 갱신.'}),
-    step('output','결과와 공유',3,'활동이 끝나면 무엇이 남고 어떻게 공유하나요?','최종 화면에 표시할 항목과 학생의 수정 동작을 함께 정해요.',['선택한 자료·이유·제안을 결과 화면에 모아 발표','초안과 수정본을 나란히 보고 변화 설명','시도한 조건·결과·설명을 비교표로 확인','개인 결과를 파일로 내려받아 공유','공동 보드에 결과를 모아 함께 살펴보기'],{multi:true}),
-    step('teacher','교사의 역할',3,'교사는 어떤 화면이나 기능이 필요한가요?','교사용 관리 화면이 꼭 필요한지 정해요. 학생 화면만으로 수업을 운영할 수도 있어요.',['별도 관리 화면 없음 · 학생 결과를 보고 진행','교사가 시작·종료와 다음 단계 공개','참여 현황과 완료 여부만 확인','학생 결과를 모아 보고 공개 여부 조절','교사가 수업 전 자료·문항을 편집'],{multi:true}),
-    step('teacherView','교사 화면 상세',3,'교사 화면에는 무엇을 보여줄까요?','필요한 결과 표시와 제어 기능을 골라주세요. 기능을 고르면 관리 권한과 상태 변화도 상세 PRD에 정리합니다.',['입장 QR·링크와 참여 인원','제출·미제출 현황','답변 카드 모아보기','투표·수치 결과를 차트로 표시','키워드 모아보기','학생 입력 잠금·마감·일시정지','답변 숨기기·공개 전 확인','결과 CSV 다운로드','자료·문항 편집'],{multi:true,when:a=>!!a.teacher&&!String(a.teacher).includes('별도 관리 화면 없음')}),
-    step('features','추가 기능',3,'활동을 돕는 기능을 더 골라볼까요?','선택한 활동과 충돌하지 않는 기능만 남기세요. 첫 버전에 꼭 필요한 것부터 정합니다.',['읽음·선택·진행 상태 표시','이전 자료 다시 보기','남은 시간을 참고용으로 표시 · 자동 종료 없음','단계마다 답변 임시 보관','힌트를 원하는 때 열기','클릭·터치로 선택 · 드래그 대체 제공','추가 기능 없이 핵심 활동에 집중'],{multi:true}),
-    step('design','화면 표현',4,'화면은 어떤 느낌이고 무엇이 잘 보여야 할까요?','색상뿐 아니라 긴 글, 작은 화면, 터치 조작도 고려해요.',['차분한 화면 · 본문과 입력창을 크게','카드 중심 화면 · 자료와 선택 상태를 명확하게','단계 중심 화면 · 지금 할 일과 다음 행동을 강조','시각 자료 중심 · 설명을 함께 제공'],{multi:true}),
-    step('visual','색·글꼴·배치',4,'색상과 글꼴, 특히 강조할 화면 요소가 있나요?','톤을 고른 뒤 필요하면 직접 색상이나 배치를 적어주세요.',['중립색 바탕·한 가지 포인트·깔끔한 고딕체','밝은 바탕·부드러운 색·큰 버튼','어두운 바탕·명확한 대비·큰 자료 영역','전자칠판에서 멀리서도 보이는 글자·카드','스마트폰 세로 화면과 눈에 띄는 입력창'],{multi:true}),
-    step('deployment','접속과 저장',4,'어떻게 접속하고 진행 내용은 어디에 남길까요?','실시간 공유·공동 저장을 선택하면 별도 서비스가 필요할 수 있어요.',['GitHub Pages 링크 · 기기별 독립 실행 · 현재 메모리만 사용','GitHub Pages 링크 · 이 기기에 저장 · 새로고침 후 복원','웹 링크 · 공동 데이터 저장 및 실시간 공유 필요','오프라인 파일 · 자료를 모두 포함하고 외부 통신 없음','미정 · 운영 환경에 맞는 제안 필요']),
-    step('privacy','개인정보와 초기화',4,'어떤 정보를 받고 언제 지울까요?','참여 이름이 꼭 필요한지, 새로고침·초기화 시 무엇이 남는지 명시해요.',['개인정보 입력 없음 · 새로고침하면 모두 초기화','별명만 사용 · 초기화 버튼으로 이 기기의 기록 삭제','모둠 코드만 사용 · 수업 종료 후 기록 삭제','저장 항목과 보관 기간을 교사가 별도로 결정']),
-    step('exclusions','첫 버전의 범위',4,'첫 버전에서 제외할 기능은 무엇인가요?','필요하지 않은 기능을 명시하면 실제 개발 범위가 선명해져요.',['회원가입·로그인 제외','점수·순위 경쟁 제외','교사용 관리 화면 제외','실시간 학급 집계 제외','서술형 자동 채점 제외','학생 활동 중 외부 AI 호출 제외','제외할 기능은 직접 정하기'],{multi:true}),
-    step('acceptance','완료 확인',5,'어떤 상황을 확인하면 사용할 준비가 됐다고 볼까요?','학생의 실제 행동으로 확인 가능한 기준을 고르거나 적어주세요.',['처음부터 결과 확인까지 안내만 보고 진행 가능','오답 수정 후 맞은 선택과 읽은 자료가 유지','빈 입력·초과 입력을 안내하고 수정 결과가 갱신','PC·태블릿의 가로·세로 화면에서 잘림 없이 조작','저장·새로고침·초기화가 정한 규칙대로 동작','정한 활동 시간 안에 교사 시연으로 전 과정 확인'],{multi:true}),
-    step('project','이름과 추가 고려사항',5,'웹앱 이름과 마지막으로 남길 요청이 있나요?','가칭, 특별한 운영 조건, 중복 접속이나 네트워크 끊김 처리 등을 자유롭게 적어주세요.',['가칭은 AI가 제안 · 추가 요청 없음','이름은 나중에 결정 · 중복 접속과 재접속 정책 검토 필요'],{placeholder:'예: 가칭 생각 모으기. 같은 모둠 코드로 다시 들어오면 기존 활동을 이어가면 좋겠어요.'})
+    step('story','상황과 도입',1,'학생에게 어떤 상황이나 과제를 제시할까요?','주제에 맞는 도입 문구·과제를 적어주세요. 이야기 없이 개념 탐구로 시작해도 좋아요.',['별도 이야기 없이 탐구 질문으로 시작','일상 속 가상 상황을 보고 문제 찾기','역할을 맡아 자료를 조사하며 시작','작품·자료를 보고 서로 다른 해석으로 시작','해결할 과제와 제작 조건을 먼저 제시'],{placeholder:'도입 화면의 질문, 상황, 등장인물이 있다면 적어주세요. 막막하면 AI와 구체화를 눌러보세요.'}),
+    step('materials','자료와 콘텐츠',1,'학생이 실제로 읽거나 다룰 자료는 무엇인가요?','자료 종류뿐 아니라 수량·원문·선택지를 구체화해요. 원문이 없으면 AI가 창작 초안을 제안할 수 있어요.',[],{multi:true,placeholder:'예: 사례 3개, 사례마다 자료 카드 2개. 자료 원문을 붙여넣거나 필요한 내용을 설명해 주세요.'}),
+    step('flow','화면과 순서',1,'학생은 어떤 순서로 활동하나요?','각 단계에서 보는 내용·하는 행동·결과를 정합니다. 정한 총시간에 맞춰 단계별 시간도 적어주세요.',[],{placeholder:'예: 도입 3분 → 자료 조사 10분 → 근거 연결 7분 → 해결 제안·공유 5분'}),
+
+    step('roles','역할과 협력',2,'학생들의 역할은 어떻게 나눌까요?','모둠 크기가 달라도 참여할 수 있도록 역할 교대 시점까지 정하면 좋아요.',['개별 활동 · 별도 역할 구분 없음','조작·자료 확인·설명 역할을 단계마다 교대','역할을 정하고 자료나 장소가 바뀔 때 교대','각자 생각을 적은 뒤 모둠 의견으로 합의','학급 공동 활동 · 교사가 조작하고 학생이 의견 제시'],{placeholder:'예: 조작·증거 확인·의견 제시 역할, 2명일 때는 역할을 겸하고 자료가 바뀌면 교대'}),
+    step('control','진행 제어',2,'다음 단계로 넘어가는 시점은 누가 정하나요?','학생마다 속도가 달라도 되는지, 교사가 모두를 동시에 넘기는지에 따라 앱 구성이 달라져요.',['학생이 각자의 속도로 진행','모둠 안에서 합의한 뒤 다음 단계 진행','교사가 공개하면 모든 학생이 다음 단계로 이동','학생 응답을 실시간으로 모아 수업 흐름 조절']),
+    step('interaction','학생의 조작',2,'학생은 화면에서 어떤 방식으로 참여하나요?','활동에 맞는 입력 방식을 고른 뒤 다음 질문에서 조건을 구체화해요.',['짧은 글 또는 근거 문장 작성','객관식 선택·투표','카드 선택·연결·순서 정렬','수치 입력·슬라이더로 조건 조절','그림 그리기·이미지 첨부','친구 의견을 보고 답글·공감','자료를 읽고 말이나 종이로 답하기'],{multi:true}),
+    step('input','입력과 예외',2,'학생이 작성하는 내용에 어떤 규칙이 필요한가요?','글자 수·빈 입력·수정·중복 제출을 정합니다. 자유 서술은 정답으로 자동 채점하지 않아도 돼요.',['300자 이내 · 공백만 제출 불가 · 결과에서 수정 가능','500자 이내 · 공백만 제출 불가 · 결과에서 수정 가능','짧은 답변과 근거를 별도 입력 · 제한은 직접 정하기','카드 선택만 사용 · 선택 누락 시 안내','글·선택을 함께 사용 · 항목별 조건 직접 정하기'],{placeholder:'예: 300자 이내, 공백만 입력하면 “이유를 한 문장 적어 주세요.” 안내. 수정 후 결과도 갱신.'}),
+    step('rules','이동과 선택 규칙',2,'다음 화면으로 넘어가는 조건은 무엇인가요?','버튼 활성화 조건, 선택 개수, 이전 단계로 돌아갈 수 있는지까지 정해요.',[],{multi:true,placeholder:'예: 자료 6개를 모두 읽으면 정리 버튼 활성화. 증거는 2개까지 선택, 다시 누르면 해제.'}),
+    step('feedback','확인과 재도전',2,'잘못 선택하거나 도움이 필요할 때 어떻게 안내할까요?','정답이 있는 활동이면 연결 기준과 피드백을, 열린 활동이면 되묻는 질문을 정해요.',[],{multi:true,placeholder:'예: 근거가 틀리면 관련 자료를 다시 보도록 안내하고 맞는 선택은 유지. 횟수 제한 없이 재도전.'}),
+    step('output','결과 화면',2,'활동이 끝나면 화면에 무엇이 보이나요?','결과 화면에 표시할 항목과 학생의 수정 동작을 정해요. 어디에 저장·공유되는지는 2부에서 따로 물어볼게요.',['선택한 자료·이유·제안을 결과 화면에 모아 발표','초안과 수정본을 나란히 보고 변화 설명','시도한 조건·결과·설명을 비교표로 확인','별도 결과 화면 없음 · 활동 단계에서 마무리'],{multi:true}),
+
+    step('participants','참여 규모',3,'한 번에 몇 명이, 어떤 단위로 쓰나요?','인원이 많을수록 필요한 도구가 달라져요. 전체 인원, 개인·짝·모둠 구성, 같은 시간에 쓰는 학급 수를 알려 주세요.',['한 학급 · 30명 안팎이 한 교실에서 함께','여러 학급 · 같은 날 학년 전체(약 100명 이하)','학교 전체·다른 학교 · 링크를 받으면 누구나(수백 명 이상)','교사 시연 · 몇 명만 참여'],{placeholder:'예: 28명, 3~4인 모둠, 모둠당 태블릿 1대'}),
+    step('devices','기기와 참여',3,'학생들은 어떤 기기로 참여하나요?','공유 기기라면 조작하지 않는 학생도 참여할 수 있는 역할을 앞에서 정했어요.',['PC·크롬북에서 개인별 조작','태블릿을 모둠에서 함께 사용','스마트폰에서 개인별 조작','교사 화면만 보고 말·종이로 참여','PC와 태블릿 모두 지원']),
+    step('identity','학생 확인',3,'학생이 누구인지 앱이 알아야 하나요?','이름을 받으면 개인정보 관리와 로그인 방식이 달라져요. 꼭 필요한 정보만 받는 쪽이 가장 쉽고 안전해요.',['아니요 · 이름 없이 QR·링크로 바로 시작','모둠 번호나 코드만 입력','별명(닉네임)만 입력 · 실제 이름은 받지 않음','이름이나 번호를 입력 · 누가 썼는지 교사가 알아야 함','학교 구글 계정으로 로그인 · 학생 본인 확인 필요'],{placeholder:'예: 번호와 별명만 입력. 실제 이름은 받지 않아요.'}),
+    step('network','학교 환경',3,'학교 네트워크나 계정에 걸릴 만한 제약이 있나요?','수업 당일에 막히는 일이 없도록 미리 확인해요. 해당되는 것을 모두 고르세요.',['학교 와이파이가 느리거나 자주 끊김','학생 구글 계정에 제한이 있음 (가입·외부 앱 허용 차단)','일부 사이트·서비스가 학교에서 차단될 수 있음','인터넷 없이도 써야 함 (오프라인)','특별한 제약 없음'],{multi:true}),
+
+    step('results','결과물의 행방',4,'학생이 만든 결과물은 어디로 가나요?','이 질문이 앱에 저장 공간(서버)이 필요한지를 결정해요. “내 화면에만”이면 서버 없이 만들 수 있어요.',['내 화면에만 보임 · 새로고침하면 사라져도 괜찮음','내 기기에 남음 · 나중에 다시 열어 이어서 함','교사가 모아서 봄 · 학생은 제출만 함','같은 모둠 친구끼리 서로 결과를 봄','학급 친구 모두의 결과를 함께 봄','다음 시간·다른 날에도 이어서 쓰고 계속 쌓임(누적)'],{multi:true}),
+    step('live','공유 시점',4,'친구나 교사 화면에 결과가 언제 나타나야 하나요?','“바로바로”는 화면끼리 실시간으로 연결해야 해서 구성이 더 복잡해져요.',['수업이 끝난 뒤에 확인해도 괜찮음','제출하면 몇 초 안에 교사 화면에 나타남','친구들의 답이 실시간으로 바로 보임','교사가 공개 버튼을 누르면 모두에게 동시에 공개'],{when:needsShare}),
+    step('retention','보관 기간',4,'저장한 결과는 언제까지 보관하나요?','오래 보관할수록 개인정보 관리와 저장 공간이 중요해져요.',['수업이 끝나면 바로 삭제','그 학기(학년) 동안 보관','교사가 직접 지울 때까지 보관','포트폴리오로 계속 누적'],{when:needsShare}),
+    step('files','사진·파일',4,'학생이 사진이나 파일을 올리나요?','파일 저장에는 별도 저장소가 필요하고 무료 용량이 한정돼 있어요.',['글과 선택만 사용 · 사진·파일 없음','사진이나 그림을 올림','문서·음성·영상 파일을 올림'],{when:needsShare}),
+    step('aiuse','AI 사용',4,'앱 안에서 AI를 쓰나요?','학생이 쓰는 도중에 AI가 답해야 하면 열쇠(API 키)를 숨겨 줄 서버가 필요하고 무료 호출 한도도 신경 써야 해요. 미리 만들어 넣는 방식이 가장 안전하고 무료로 가능해요.',['활동 중 AI 사용 없음','교사가 수업 전에 AI로 자료를 만들어 앱에 넣음 · 학생 활동 중에는 AI 없음','학생이 활동 중 AI에게 질문하고 답을 받음','학생이 쓴 글에 AI가 피드백을 줌']),
+    step('export','결과 받기',4,'수업이 끝난 뒤 교사는 결과를 어떻게 받고 싶나요?','구글 시트로 자동 정리되는 방식은 교사에게 가장 익숙해요.',['앱 화면에서만 확인','엑셀·CSV 파일로 내려받음','구글 시트에 자동으로 쌓임','인쇄하거나 PDF로 저장'],{when:needsShare}),
+
+    step('teacher','교사의 역할',5,'교사는 어떤 화면이나 기능이 필요한가요?','교사용 관리 화면이 꼭 필요한지 정해요. 학생 화면만으로 수업을 운영할 수도 있어요.',['별도 관리 화면 없음 · 학생 결과를 보고 진행','교사가 시작·종료와 다음 단계 공개','참여 현황과 완료 여부만 확인','학생 결과를 모아 보고 공개 여부 조절','교사가 수업 전 자료·문항을 편집'],{multi:true}),
+    step('teacherView','교사 화면 상세',5,'교사 화면에는 무엇을 보여줄까요?','필요한 결과 표시와 제어 기능을 골라주세요. 기능을 고르면 관리 권한과 상태 변화도 상세 PRD에 정리합니다.',['입장 QR·링크와 참여 인원','제출·미제출 현황','답변 카드 모아보기','투표·수치 결과를 차트로 표시','키워드 모아보기','학생 입력 잠금·마감·일시정지','답변 숨기기·공개 전 확인','결과 CSV 다운로드','자료·문항 편집'],{multi:true,when:a=>!!a.teacher&&!String(a.teacher).includes('별도 관리 화면 없음')}),
+    step('features','추가 기능',5,'활동을 돕는 기능을 더 골라볼까요?','선택한 활동과 충돌하지 않는 기능만 남기세요. 첫 버전에 꼭 필요한 것부터 정합니다.',['읽음·선택·진행 상태 표시','이전 자료 다시 보기','남은 시간을 참고용으로 표시 · 자동 종료 없음','단계마다 답변 임시 보관','힌트를 원하는 때 열기','클릭·터치로 선택 · 드래그 대체 제공','추가 기능 없이 핵심 활동에 집중'],{multi:true}),
+    step('design','화면 표현',5,'화면은 어떤 느낌이고 무엇이 잘 보여야 할까요?','색상뿐 아니라 긴 글, 작은 화면, 터치 조작도 고려해요.',['차분한 화면 · 본문과 입력창을 크게','카드 중심 화면 · 자료와 선택 상태를 명확하게','단계 중심 화면 · 지금 할 일과 다음 행동을 강조','시각 자료 중심 · 설명을 함께 제공'],{multi:true}),
+    step('visual','색·글꼴·배치',5,'색상과 글꼴, 특히 강조할 화면 요소가 있나요?','톤을 고른 뒤 필요하면 직접 색상이나 배치를 적어주세요.',['중립색 바탕·한 가지 포인트·깔끔한 고딕체','밝은 바탕·부드러운 색·큰 버튼','어두운 바탕·명확한 대비·큰 자료 영역','전자칠판에서 멀리서도 보이는 글자·카드','스마트폰 세로 화면과 눈에 띄는 입력창'],{multi:true}),
+
+    step('selfops','만든 뒤의 운영',6,'만든 뒤 운영은 어떻게 하실 수 있나요?','저장 공간이나 AI를 쓰면 가입·설정이 필요해요. 비용과 관리 부담에 맞는 선택을 추천해요.',['무료만 사용 · 설정 과정은 AI 도구가 안내하는 대로 따라 하기','필요하면 소액 유료도 가능','학교·기관 계정이나 예산이 있음','한 번 만들고 거의 손대지 않을 예정']),
+    step('exclusions','첫 버전의 범위',6,'첫 버전에서 제외할 기능은 무엇인가요?','필요하지 않은 기능을 명시하면 실제 개발 범위가 선명해져요.',['회원가입·로그인 제외','점수·순위 경쟁 제외','교사용 관리 화면 제외','실시간 학급 집계 제외','서술형 자동 채점 제외','학생 활동 중 외부 AI 호출 제외','사진·파일 업로드 제외','제외할 기능은 직접 정하기'],{multi:true}),
+    step('stack','기술 구성',6,'지금까지의 답으로 보면 이런 구성이 어울려요. 어떻게 할까요?','프론트엔드(화면)·백엔드(저장·서버)·배포(공개 방법)를 학생 경험에서 정한 답으로 골랐어요. 추천을 그대로 쓰거나 다른 구성으로 바꿀 수 있어요.',[],{}),
+    step('acceptance','완료 확인',6,'어떤 상황을 확인하면 사용할 준비가 됐다고 볼까요?','학생의 실제 행동으로 확인 가능한 기준을 고르거나 적어주세요.',['처음부터 결과 확인까지 안내만 보고 진행 가능','오답 수정 후 맞은 선택과 읽은 자료가 유지','빈 입력·초과 입력을 안내하고 수정 결과가 갱신','PC·태블릿의 가로·세로 화면에서 잘림 없이 조작','새로고침·초기화가 정한 저장 규칙대로 동작','학생이 제출한 결과가 정한 저장 위치(교사 화면·시트 등)에 나타남','여러 학생이 동시에 접속해도 결과가 섞이거나 사라지지 않음','정한 활동 시간 안에 교사 시연으로 전 과정 확인'],{multi:true}),
+    step('project','이름과 추가 고려사항',6,'웹앱 이름과 마지막으로 남길 요청이 있나요?','가칭, 특별한 운영 조건, 중복 접속이나 네트워크 끊김 처리 등을 자유롭게 적어주세요.',['가칭은 AI가 제안 · 추가 요청 없음','이름은 나중에 결정 · 중복 접속과 재접속 정책 검토 필요'],{placeholder:'예: 가칭 생각 모으기. 같은 모둠 코드로 다시 들어오면 기존 활동을 이어가면 좋겠어요.'})
   ];
   const value=(answers,id)=>Array.isArray(answers[id])?answers[id].join(' / '):answers[id]||'';
+  const stepById=id=>steps.find(s=>s.id===id);
+  const val=(a,id)=>{const s=stepById(id);return s&&(!s.when||s.when(a))?value(a,id):'';};
+  const isRealtime=a=>/몇 초 안에|실시간|동시에 공개/.test(val(a,'live'))||/동시에|모든 학생|실시간/.test(value(a,'control'));
+  const stacks={
+    static:{label:'정적 웹페이지 + GitHub Pages',one:'서버 없이 브라우저 안에서만 동작해요',
+      frontend:'HTML·CSS·JavaScript (프레임워크 없이 파일 1~3개)',backend:'없음. 이어서 하기가 필요하면 브라우저 저장소(localStorage)만 사용',deploy:'GitHub Pages 무료 링크, QR로 공유',
+      free:'완전 무료. 호출·저장 한도 걱정이 없어요.',caution:'기기끼리 데이터가 공유되지 않아요. 교사가 학생 결과를 모아 볼 수 없습니다.',
+      build:['화면과 활동 흐름을 먼저 완성','저장이 필요하면 localStorage에 저장·복원 추가','GitHub 저장소에 올려 Pages로 배포','수업 전 교실 기기에서 리허설']},
+    appsscript:{label:'Google Apps Script + 구글 시트',one:'교사가 구글 시트로 결과를 받는 가장 쉬운 방법이에요',
+      frontend:'HTML·CSS·JavaScript (GitHub Pages 또는 Apps Script 웹앱 화면)',backend:'Apps Script 웹앱이 학생 응답을 받아 구글 시트에 한 줄씩 저장해요. 학생 활동 중 AI 호출이 필요하면 여기서 키를 숨겨 대신 호출해요.',deploy:'프론트: GitHub Pages(또는 Apps Script 화면). 백엔드: Apps Script “웹 앱으로 배포”',
+      free:'개인 구글 계정에서 무료예요. 동시 실행(약 30개)과 하루 실행 시간 제한이 있어 한 학급 규모의 “제출 후 확인”에 알맞아요.',caution:'실시간 반영은 몇 초마다 새로 불러오는 방식이라 약간 느려요. 학교 계정은 관리자가 외부 접근을 막을 수 있어요.',
+      build:['화면과 활동 흐름을 먼저 완성(저장은 가짜 데이터로)','구글 시트를 만들고 Apps Script 웹앱으로 저장·조회 연결','배포 후 “누구나 접근” 범위와 학교 계정 제한 확인','학급 인원만큼 동시에 제출해 보는 리허설']},
+    firebase:{label:'Firebase (Firestore + Hosting)',one:'화면끼리 결과가 실시간으로 바로 공유돼요',
+      frontend:'HTML·CSS·JavaScript (Firebase 웹 SDK 사용)',backend:'Firestore 데이터베이스가 변경 내용을 모든 화면에 실시간으로 전달해요. 학생은 익명 로그인으로 구분할 수 있어요.',deploy:'Firebase Hosting (무료 Spark 요금제)',
+      free:'Spark 무료 한도는 대략 하루 읽기 5만·쓰기 2만·저장 1GiB예요. 실시간 구독은 접속자 수만큼 읽기가 늘어요.',caution:'사진·파일 저장(Cloud Storage)과 서버 함수는 유료(Blaze) 전환이 필요할 수 있어요. 보안 규칙을 꼭 설정해야 해요.',
+      build:['화면과 활동 흐름을 먼저 완성','Firebase 프로젝트를 만들고 Firestore·익명 로그인 설정','실시간 구독은 필요한 데이터만 읽도록 제한','보안 규칙 작성 후 Hosting 배포','학급 인원 동시 접속 리허설']},
+    supabase:{label:'Supabase (Postgres + Auth + Storage)',one:'로그인·사진 저장·누적 기록까지 필요한 큰 규모에 알맞아요',
+      frontend:'HTML·CSS·JavaScript (Supabase JS 라이브러리 사용)',backend:'표 형태 데이터베이스(Postgres), 로그인(Auth), 파일 저장(Storage), 실시간(Realtime)을 한 곳에서 제공해요.',deploy:'프론트는 GitHub Pages·Netlify·Vercel 같은 정적 호스팅, 백엔드는 Supabase 클라우드',
+      free:'무료 플랜은 대략 DB 500MB·파일 1GB·동시 실시간 연결 200개예요.',caution:'무료 프로젝트는 약 1주일 쓰지 않으면 일시정지돼 수업 전에 깨워야 해요. 행 수준 보안(RLS) 설정이 필수예요.',
+      build:['화면과 활동 흐름을 먼저 완성','Supabase 프로젝트 생성, 표(table)와 보안 규칙(RLS) 설정','로그인·파일 저장·실시간 중 필요한 것만 연결','정적 호스팅에 배포하고 수업 전날 프로젝트가 깨어 있는지 확인']}
+  };
+  const stackOrder=['static','appsscript','firebase','supabase'];
+  function recommend(a,force){
+    const shared=needsShare(a),rt=isRealtime(a),files=/올림/.test(val(a,'files')),ai=/학생이 활동 중 AI|AI가 피드백/.test(val(a,'aiuse')),
+      scale=/학교 전체/.test(value(a,'participants'))?'school':/여러 학급/.test(value(a,'participants'))?'multi':'single',
+      port=/포트폴리오/.test(val(a,'retention'))||/누적/.test(value(a,'results')),sheet=/구글 시트|CSV/.test(val(a,'export')),
+      offline=/오프라인/.test(value(a,'network')),google=/구글 계정으로 로그인/.test(value(a,'identity')),free=/무료만/.test(value(a,'selfops'));
+    const need=shared||rt;let id;
+    if(offline)id='static';
+    else if(need&&(files||port||scale==='school'))id='supabase';
+    else if(rt)id='firebase';
+    else if(need||ai||google)id='appsscript';
+    else id='static';
+    if(force)id=force;
+    const reasons=[],warnings=[];
+    if(offline)reasons.push('인터넷 없이 써야 해서 모든 자료를 파일 안에 담는 방식이 필요해요.');
+    if(!need&&!offline)reasons.push('학생 결과를 기기 밖으로 보내지 않아도 돼서 서버 없이 만들 수 있어요.');
+    if(shared&&!offline)reasons.push('교사나 친구가 학생 결과를 보려면 결과를 기기 밖에 저장할 곳이 필요해요.');
+    if(rt)reasons.push('결과가 바로 보이거나 교사가 모두의 화면을 동시에 넘기려면 화면끼리 실시간으로 연결해야 해요.');
+    if(files&&need)reasons.push('사진·파일을 올리려면 파일 저장소가 필요해요.');
+    if(port&&need)reasons.push('결과를 계속 쌓아 두려면 표 형태로 정리되는 데이터베이스가 편해요.');
+    if(scale==='school'&&need)reasons.push('수백 명 규모는 한 학급용 도구로는 한도를 넘기기 쉬워요.');
+    if(!rt&&need&&id==='appsscript'&&sheet)reasons.push('결과를 구글 시트로 받고 싶다면 Apps Script가 가장 자연스러워요.');
+    if(ai&&id==='appsscript')reasons.push('학생 활동 중 AI를 쓰면 열쇠(API 키)를 숨기고 대신 호출해 줄 작은 서버 역할이 필요해요.');
+    if(google)reasons.push('학생 구글 계정 로그인이 필요해 계정 연동이 쉬운 구성을 골랐어요.');
+    if(ai)warnings.push('무료 AI는 분당 요청 수 제한이 있어 학급 전체가 동시에 호출하면 막힐 수 있어요. 미리 만든 자료로 대체하거나 교사 시연 방식도 검토하세요.');
+    if(ai&&id==='firebase')warnings.push('Firebase에서 AI 키를 숨기려면 서버 함수가 필요하고 유료(Blaze) 전환이 필요할 수 있어요.');
+    if(files&&id==='firebase')warnings.push('Firebase의 파일 저장소는 유료 전환이 필요할 수 있어요. 파일이 필요하면 Supabase를 검토하세요.');
+    if(rt&&scale!=='single'&&id==='firebase')warnings.push('여러 학급이 실시간으로 쓰면 무료 읽기 한도를 넘을 수 있어요. 화면에 필요한 데이터만 구독하도록 설계하세요.');
+    if(rt&&id==='appsscript')warnings.push('Apps Script는 몇 초마다 새로 불러오는 방식이라 “바로바로”와는 차이가 있어요.');
+    if(free&&id==='supabase')warnings.push('무료 프로젝트는 일정 기간 쓰지 않으면 일시정지돼요. 수업 전날 접속해 깨워 두세요.');
+    if(google&&id==='appsscript')warnings.push('학교(Workspace) 계정이면 웹앱 접근 범위를 “조직 내 사용자”로 제한할 수 있지만, 관리자 설정에 따라 막힐 수 있어요.');
+    return {id,reasons,warnings,...stacks[id]};
+  }
+  const stackByLabel=label=>stackOrder.map(k=>({id:k,...stacks[k]})).find(s=>label&&String(label).startsWith(s.label));
+  function stackOptions(a){const rec=recommend(a).id;return [rec,...stackOrder.filter(k=>k!==rec)].map(k=>({label:`${stacks[k].label}${k===rec?' (추천)':''} · ${stacks[k].one}`,value:stacks[k].label}));}
+  function stackText(a){const rec=recommend(a);const pick=stackByLabel(a.stack);const chosen=pick?recommend(a,pick.id):rec;const lines=[`- 프론트엔드(화면): ${chosen.frontend}`,`- 백엔드·데이터 저장: ${chosen.backend}`,`- 배포: ${chosen.deploy}`,`- 무료 사용 범위: ${chosen.free}`,`- 주의: ${chosen.caution}`,`- 만드는 순서: ${chosen.build.map((x,i)=>`${i+1}) ${x}`).join(' ')}`];
+    if(chosen.id!==rec.id)lines.push(`- 참고: 앱의 추천은 “${rec.label}”였어요. ${rec.reasons.join(' ')}`);else if(rec.reasons.length)lines.push(`- 추천 근거: ${rec.reasons.join(' ')}`);
+    rec.warnings.forEach(w=>lines.push(`- 확인 필요: ${w}`));return lines.join('\n');}
   function activityOptions(answers){const subjects=Array.isArray(answers.subjects)?answers.subjects:[answers.subjects].filter(Boolean);return subjects.flatMap(subject=>(activities[baseOf(subject)]||common).map(label=>({label,group:subject,value:`${subject} · ${label}`})));}
   function selectedBranches(answers){const text=value(answers,'activity');const matched=branches.filter(b=>b.match.test(text));return matched.length?matched:branches.slice(0,4);}
   function options(id,answers){if(id==='activity')return activityOptions(answers);
+    if(id==='stack')return stackOptions(answers);
     if(id==='subjects')return [...subjectsFor(answers.school),'기타 · 직접 입력'];
     {const g=subjectGenerated(id,answers);if(g.length&&!['objective','story','materials'].includes(id)){const baseAll=['method','flow','rules','feedback'].includes(id)?null:(steps.find(s=>s.id===id)?.options||[]);if(baseAll===null){/* handled below */}else if(mixBase.has(id)){const seen=new Set(g.map(x=>x.label));return [...g,...baseAll.filter(l=>!seen.has(l)).map(l=>({label:l,group:'공통',value:l}))];}else return g;}}
     const subjectSpecific={objective:[langObjectives,objectives],story:[langStory,stories],materials:[langMaterials,materialSets]}[id];
     if(subjectSpecific){const list=bySubject(answers,id,...subjectSpecific);if(list.length)return list;}if(['method','materials','flow','rules','feedback'].includes(id)){const key=id==='method'?'methods':id;const seen=new Set(subjectGenerated(id,answers).map(x=>x.label));return [...subjectGenerated(id,answers),...selectedBranches(answers).flatMap(b=>b[key].filter(label=>{if(seen.has(label))return false;seen.add(label);return true;}).map(label=>({label,group:b.label,value:label})))];}return steps.find(s=>s.id===id)?.options||[];}
   const sectionDefs=[
     ['기본 수업 정보',['project','school','grades','subjects','idea','objective','duration']],
-    ['사용 환경 및 접속 방식',['participants','devices','access','roles']],
+    ['사용 환경 및 접속 방식',['participants','devices','identity','network','roles']],
     ['활동 구성·실행 방식과 진행 규칙',['activity','method','story','materials','flow','control','rules','feedback']],
     ['핵심 구현 기능: 교사 화면과 학생 화면',['teacher','teacherView','interaction','input','output','features']],
     ['디자인 및 화면 스타일',['design','visual']],
-    ['운영 조건·추가 고려사항',['deployment','privacy','exclusions']],
+    ['운영 조건·기술 구성',['results','live','retention','files','aiuse','export','selfops','stack','exclusions']],
     ['완료 기준',['acceptance']]
   ];
   function visibleSteps(answers){return steps.filter(s=>!s.when||s.when(answers));}
-  function sections(answers){return sectionDefs.map(([title,ids])=>[title,ids.filter(id=>!steps.find(s=>s.id===id).when||steps.find(s=>s.id===id).when(answers)).map(id=>`### ${steps.find(s=>s.id===id).title}\n${value(answers,id)||'[미정] 질문에 답하거나 AI 제안을 검토해 주세요.'}`).join('\n\n')]);}
-  function checks(answers){const ids=['idea','objective','activity','method','materials','flow','control','rules','feedback','interaction','input','output','deployment','privacy','acceptance'];return ids.map(id=>({id,label:steps.find(s=>s.id===id).title,done:!!value(answers,id)&&!/^미정/.test(value(answers,id))}));}
-  function conflicts(answers){const all=id=>value(answers,id);const issues=[];
-    if(/공동|실시간/.test([all('teacher'),all('output'),all('features')].join(' '))&&/독립|오프라인/.test(all('deployment')))issues.push('공동 화면·실시간 기능과 기기별 독립 실행 조건을 함께 확인해 주세요.');
-    if(/메모리만/.test(all('deployment'))&&/보관 기간|기록 삭제/.test(all('privacy')))issues.push('메모리만 사용하는 방식과 기록 보관·삭제 조건을 맞춰 주세요.');
-    if(/복원/.test(all('deployment'))&&/새로고침하면 모두 초기화/.test(all('privacy')))issues.push('새로고침 후 복원과 초기화 중 하나를 정해 주세요.');
-    if(/구글 계정/.test(all('access'))&&/로그인 제외/.test(all('exclusions')))issues.push('구글 계정 로그인과 로그인 제외 중 하나를 선택해 주세요.');
-    if(/동시에|모든 학생|실시간/.test(all('control'))&&/독립|오프라인/.test(all('deployment')))issues.push('교사의 일괄 제어·실시간 진행에는 기기 사이를 연결할 통신 방식이 필요합니다.');
-    if(/교사용 관리 화면 제외/.test(all('exclusions'))&&/교사가 시작|참여 현황|공개 여부|자료·문항/.test(all('teacher')))issues.push('교사용 기능과 관리 화면 제외 조건을 맞춰 주세요.');
+  function sections(answers){return sectionDefs.map(([title,ids])=>[title,ids.filter(id=>!stepById(id).when||stepById(id).when(answers)).map(id=>{const v=value(answers,id);return `### ${stepById(id).title}\n${v?v+(id==='stack'&&!/^미정/.test(v)?'\n'+stackText(answers):''):'[미정] 질문에 답하거나 AI 제안을 검토해 주세요.'}`;}).join('\n\n')]);}
+  function checks(answers){const ids=['idea','objective','activity','method','materials','flow','control','rules','feedback','interaction','input','output','participants','identity','results','aiuse','stack','acceptance'];return ids.map(id=>({id,label:steps.find(s=>s.id===id).title,done:!!value(answers,id)&&!/^미정/.test(value(answers,id))}));}
+  function conflicts(answers){const v=id=>val(answers,id);const issues=[];const rt=isRealtime(answers),shared=needsShare(answers),ai=/학생이 활동 중 AI|AI가 피드백/.test(v('aiuse')),stack=stackByLabel(answers.stack);
+    if(/구글 계정으로 로그인/.test(v('identity'))&&/로그인 제외/.test(v('exclusions')))issues.push('학생 구글 로그인과 “회원가입·로그인 제외” 중 하나를 선택해 주세요.');
+    if(/구글 계정으로 로그인/.test(v('identity'))&&/구글 계정에 제한/.test(v('network')))issues.push('학생 구글 계정에 제한이 있는데 구글 로그인을 쓰려고 해요. 별명·코드 방식도 검토해 주세요.');
+    if(/오프라인/.test(v('network'))&&(shared||rt))issues.push('인터넷 없이 써야 하는데 결과를 모으거나 실시간으로 공유하려고 해요. 하나를 정해 주세요.');
+    if(!shared&&answers.results&&/참여 현황|결과를 모아|공개 여부/.test(v('teacher')))issues.push('교사가 학생 결과를 보려면 “결과물의 행방”에서 “교사가 모아서 봄”을 선택해야 해요.');
+    if(/수업이 끝나면 바로 삭제/.test(v('retention'))&&/누적|다음 시간/.test(v('results')))issues.push('“수업 끝나면 삭제”와 “다음 시간에도 이어서 누적”이 서로 충돌해요.');
+    if(ai&&/외부 AI 호출 제외/.test(v('exclusions')))issues.push('학생 활동 중 AI 사용과 “외부 AI 호출 제외”가 충돌해요.');
+    if(ai&&/무료만/.test(v('selfops')))issues.push('학생이 직접 AI를 쓰면 무료 호출 한도(분당 요청 수)에 걸릴 수 있어요. 미리 만든 자료로 대체할 수 있는지 확인해 주세요.');
+    if(rt&&/실시간 학급 집계 제외/.test(v('exclusions')))issues.push('실시간 공유·제어와 “실시간 학급 집계 제외”가 충돌해요.');
+    if(/사진이나 그림|파일을 올림/.test(v('files'))&&/사진·파일 업로드 제외/.test(v('exclusions')))issues.push('사진·파일 업로드와 “업로드 제외” 중 하나를 선택해 주세요.');
+    if(stack&&stack.id==='static'&&(shared||rt))issues.push('서버 없는 구성(정적 웹페이지)으로는 결과를 모으거나 실시간으로 공유할 수 없어요.');
+    if(stack&&stack.id==='appsscript'&&rt)issues.push('Apps Script는 몇 초마다 새로 불러오는 방식이라 실시간 공유가 느릴 수 있어요.');
+    if(/교사용 관리 화면 제외/.test(v('exclusions'))&&/교사가 시작|참여 현황|공개 여부|자료·문항/.test(v('teacher')))issues.push('교사용 기능과 관리 화면 제외 조건을 맞춰 주세요.');
     return issues;
   }
   const specification=`당신은 교사를 위한 수업용 웹앱 설계 동료다. 한국어로 쓴다. 단순한 아이디어 목록이 아니라 개발자가 추가로 핵심 동작을 추측하지 않아도 구현 가능한 PRD를 작성한다.
@@ -210,7 +292,7 @@ globalThis.Planning = (() => {
 ## 1. 기본 수업 정보
 웹앱 가칭, 학교급·학년·과목·단원·배움의 목표·활동 시간. 교과 연결은 제공된 범위만 사용. 이름·반·제작자 개인정보는 제공하지 않으면 요구하지 않는다.
 ## 2. 사용 환경 및 접속 방식
-전체 인원·모둠 크기·기기·접속 방법·로그인 여부·역할과 교대 시점. 모둠 인원 변화 시 역할 겸임도 필요할 때 설명.
+전체 인원·모둠 크기·동시에 쓰는 학급 수·기기·학교 네트워크 제약·학생 식별 방식(익명·코드·별명·이름·계정)과 받는 개인정보의 범위·역할과 교대 시점. 모둠 인원 변화 시 역할 겸임도 필요할 때 설명.
 ## 3. 활동 구성·실행 방식과 진행 규칙
 도입 화면의 실제 질문과 상황. 처음부터 답을 노출하지 말 것. 선택한 활동 유형과 진행 방식을 연결하고 학생 자율·교사 일괄 제어·실시간 집계를 구분한다.
 각 단계별: 권장 시간, 화면에 보이는 내용, 학생 행동, 버튼 이름, 활성화·이동 조건, 유지되는 상태. 정한 총시간과 단계별 시간 합계를 맞추고 자동 종료 여부를 명시.
@@ -220,16 +302,20 @@ globalThis.Planning = (() => {
 교사 화면: 입장·방 관리·타이머·일시정지·입력 잠금·제출 현황·카드/차트/키워드 표시·답변 가리기·CSV 등 확정한 기능의 상태와 권한을 명시. 선택하지 않은 기능을 의무로 추가하지 않는다. 학생 화면: 입력·선택·정렬·이미지·슬라이더·친구 의견·피드백 중 선택한 방식의 구체적 제약과 상호작용, 결과와 수정 흐름을 작성. 교사 화면이 없으면 제외라고 명시.
 ## 5. 디자인 및 화면 스타일
 톤, 색, 글꼴, 화면 배치, 전자칠판·모바일·태블릿의 크기와 가독성을 입력에 맞춰 정리한다.
-## 6. 운영 조건·추가 고려사항
-필수 기능과 제외 기능을 구분. 로그인·개인정보·통신·API 필요 여부, 저장 위치와 데이터 항목, 새로고침·창 닫기·초기화 결과를 명시. 독립 실행과 실시간 공유의 충돌을 감추지 않는다. PC/태블릿, 터치/클릭, 색 이외의 상태 표시, 긴 글의 잘림 방지를 포함.
+## 6. 운영 조건·기술 구성
+필수 기능과 제외 기능을 구분. 학생 결과물의 저장 위치·공유 시점·보관 기간, 사진·파일·AI 사용 여부, 교사가 결과를 받는 방식을 명시. 기술 구성은 확정한 항목(프론트엔드·백엔드/데이터 저장·배포)과 그 근거를 쓰고, 기술 용어에는 한 줄 쉬운 설명을 덧붙인다. 확정하지 않은 도구로 임의로 바꾸지 않는다. 저장하는 데이터 항목(이름·타입·누가 쓰고 읽는지), 접근 권한·보안 규칙, 무료 사용 한도와 넘을 때의 대응, 새로고침·창 닫기·초기화 결과, 만드는 순서를 포함. 독립 실행과 실시간 공유의 충돌을 감추지 않는다. PC/태블릿, 터치/클릭, 색 이외의 상태 표시, 긴 글의 잘림 방지를 포함.
 ## 7. 완료 기준
 흐름·자료/정답 정확성·재도전·입력/수정·호환·저장/초기화·수업 시간에 대해 '어떤 조작을 하면 어떤 결과가 보여야 하는가' 형태의 검증 기준을 작성. 정의하지 않은 동작의 성공을 선언하지 않는다. 끝에 교사 검토가 필요한 제안과 미정 사항을 따로 정리.
 분량보다 일관성을 우선하되 문구와 동작을 생략한 요약문으로 축약하지 않는다. 마크다운 제목·문단·목록으로 작성하고 코드 블록으로 전체를 감싸지 않는다.`;
-  const prdParts=[[1,2],[3],[4,5,6]];
+  /* 무료 등급의 분당 요청 한도를 고려해 동시 호출은 2개로 제한: 1차 [1,2]+[3], 2차 [4,5,6]+[7] */
+  const prdWaves=[[[1,2],[3]],[[4,5,6],[7]]];
   function promptPart(answers,current,instruction,nums,context=''){return `${specification}\n\n[이번 요청의 작성 범위] 위 7개 섹션 중 ${nums.map(n=>`"## ${n}."`).join(', ')} 섹션만 작성한다. 다른 섹션은 다른 요청이 작성하므로 쓰지 않는다. 각 섹션은 "## 번호. 제목"으로 시작한다. 확정 답변을 기준으로 용어·버튼 이름·시간을 일관되게 맞춘다.${context?`\n\n[이미 작성된 활동 구성 섹션 — 이 내용의 자료 ID·단계·버튼 이름과 일치시킨다]\n${context}`:''}\n\n사용자 요청:\n${instruction}\n\n확정한 질문별 답변:\n${labeledAnswers(answers)}${current?`\n\n기존 문서:\n${current}`:''}\n\n앱에서 발견한 확인 필요 사항:\n${conflicts(answers).join('\n')||'없음'}\n\n출력은 JSON 하나만: {"sections":[{"n":번호,"markdown":"해당 섹션 전체(제목 포함) 마크다운"}]}`;}
   function prompt(answers,current,instruction){return `${specification}\n\n사용자 요청:\n${instruction}\n\n확정한 질문별 답변(JSON 데이터):\n${JSON.stringify(answers)}\n\n기존 문서:\n${current}\n\n앱에서 발견한 확인 필요 사항:\n${conflicts(answers).join('\n')||'없음'}`;}
-  function labeledAnswers(answers){return steps.filter(s=>answers[s.id]&&(!s.when||s.when(answers))).map(s=>`- ${s.title}: ${value(answers,s.id)}`).join('\n')||'(아직 정한 답변 없음)';}
+  function labeledAnswers(answers){return steps.filter(s=>answers[s.id]&&(!s.when||s.when(answers))).map(s=>`- ${s.title}: ${value(answers,s.id)}${s.id==='stack'&&!/^미정/.test(value(answers,s.id))?'\n'+stackText(answers):''}`).join('\n')||'(아직 정한 답변 없음)';}
+  function editPrompt(answers,draft,instruction){return `${specification.split('\n').slice(0,3).join('\n')}\n\n[작업] 아래 기존 PRD를 사용자 요청에 맞게 고친다. 요청과 관련된 섹션만 "## 번호. 제목"으로 시작하는 전체 마크다운으로 다시 쓰고, 관련 없는 섹션은 출력하지 않는다. 다른 섹션과 용어·버튼 이름·시간·자료 ID를 맞춘다. 확정 답변과 충돌하는 요청이면 해당 섹션 안에 [확인 필요]로 표시한다.\n\n사용자 요청:\n${instruction}\n\n확정한 질문별 답변:\n${labeledAnswers(answers)}\n\n기존 PRD:\n${draft}\n\n출력은 JSON 하나만: {"sections":[{"n":번호,"markdown":"해당 섹션 전체(제목 포함) 마크다운"}]}`;}
   function coachPrompt(answers,id,request,proposal=false){const s=steps.find(s=>s.id===id);return `당신은 수업 웹앱 설계 동료다. 한국어로 대화한다. 사용자는 아래의 수업을 설계하고 있고, 지금까지 정한 답변과 일관되게 도와야 한다.\n[지금까지 정한 수업 정보]\n${labeledAnswers(answers)}\n\n[지금 정하는 질문] ${s?.question||'최종 검토'}\n[활동 분기] ${selectedBranches(answers).map(b=>b.label).join(', ')}\n\n규칙: 위 과목·학교급·학년·단원 주제·배움의 목표·활동에 반드시 맞는 내용만 쓴다. 다른 과목에도 그대로 쓸 수 있는 일반적인 답을 하지 않는다. 이미 정한 답변과 충돌하면 그 점을 알린다. 사용자가 정하지 않은 내용은 [제안]이라고 표시한다. 평가 요소를 추천하는 요청으로 오해하지 않는다. 교과서나 성취기준은 추측하지 않는다.\n${proposal?'현재 질문에 들어갈 구체적인 답변 초안 1개만 작성한다. 활동·주제를 연결하고 실제 문구·개수·조건을 필요한 만큼 제안한다. 다른 단계로 진행하거나 전체 PRD를 쓰지 않는다. 마크다운 기호 없이 순수한 문장으로만, 간결하게 쓴다. JSON {"draft":"초안"} 하나만 출력한다.':'사용자의 질문에 간결하게 설명하고 가능한 선택지를 비교한다. 답변을 확정하거나 자동으로 다음 단계로 넘어가지 않는다. answer에는 마크다운 표·제목·구분선 없이 짧은 문단과 "- " 목록만 쓰고 600자 이내로 한다. choices에는 사용자가 현재 질문의 답변으로 바로 고를 수 있는 짧은 문장 3~4개를 쓴다(질문 형태 금지). JSON {"answer":"...","choices":["...","..."]} 하나만 출력한다.'}\n사용자 메시지: ${request}`;}
-  function migrate(saved){if(!saved||!saved.answers||!Array.isArray(saved.messages))return null;const next={...saved,version:2};if(saved.version!==2){next.step=steps.findIndex(s=>!saved.answers[s.id]);if(next.step<0)next.step=steps.length;next.draftStale=!!saved.draft;}else next.step=Math.min(Math.max(Number(saved.step)||0,0),steps.length);return next;}
-  return {steps,visibleSteps,groups,options,sections,checks,conflicts,prompt,promptPart,prdParts,coachPrompt,subjectsFor,migrate,selectedBranches};
+  function migrate(saved){if(!saved||!saved.answers||!Array.isArray(saved.messages))return null;const next={...saved,version:3};
+    if(saved.version!==3){const ids=new Set(steps.map(s=>s.id));next.answers=Object.fromEntries(Object.entries(saved.answers).filter(([k])=>ids.has(k)));const open=steps.findIndex(s=>(!s.when||s.when(next.answers))&&!next.answers[s.id]);next.step=open<0?steps.length:open;next.draftStale=!!saved.draft;}
+    else next.step=Math.min(Math.max(Number(saved.step)||0,0),steps.length);return next;}
+  return {steps,visibleSteps,groups,parts,options,sections,checks,conflicts,prompt,promptPart,editPrompt,prdWaves,coachPrompt,subjectsFor,migrate,selectedBranches,recommend,stackText};
 })();
