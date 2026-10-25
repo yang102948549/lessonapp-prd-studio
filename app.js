@@ -201,7 +201,7 @@ function render(){
   $('previous-answer').hidden=!def||!answerText(def.id);$('clear-answer').hidden=!def||!answerText(def.id);$('clear-answer').disabled=busy;$('previous-answer').textContent=def&&answerText(def.id)?`이전에 정한 내용: ${answerText(def.id)}`:'';
   let options=def?.id==='grades'?gradeOptions():Planning.options(def?.id,state.answers);if(def?.id==='subjects')options=[...options,...state.extraSubjects];
   renderChips(def,options);
-  $('send').disabled=busy;$('ai-refine').disabled=busy;$('new-chat').disabled=busy;
+  $('chat-notice').classList.toggle('progress',busy);$('send').disabled=busy;$('ai-refine').disabled=busy;$('new-chat').disabled=busy;
   $('chat-input').disabled=busy;$('edit-doc').disabled=busy;
   $('cancel-edit').hidden=!def||!isAnswered(def.id)||firstUnanswered()===state.step;$('cancel-edit').disabled=busy;
   renderStackCard(def);renderMap();renderUsage();

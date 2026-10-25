@@ -205,3 +205,6 @@
 .sb-toggle::after{content:'▾';font-size:12px}
 .sb-toggle[aria-expanded=false]::after{content:'▸'}
 .sb-toggle:hover{background:transparent;color:var(--fg)}
+
+/* 진행 중 안내(상세 PRD 작성 중 등)는 앱의 틸 색으로, 오류·경고는 기존 주황 유지 */
+#chat-notice.progress{color:#5a7565;font-weight:500}
