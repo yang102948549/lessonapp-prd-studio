@@ -182,3 +182,10 @@
 #steps button.current.done .step-dot,#steps button.current.done:hover .step-dot{background:#718b7c;border-color:#718b7c;color:#fff}
 #steps button.skip .step-dot{border:1.5px dashed #9b6026;color:#9b6026}
 #steps button.done .step-dot{background:#718b7c;border-color:#718b7c;color:#fff}
+
+/* 트리 연결선: 직선 대신 부드럽게 휘어지는 곡선 */
+.tree ul>li::before{border-left-width:2px}
+.tree ul>li:last-child::before{display:none}
+.tree ul>li::after{left:-22px;top:0;width:20px;height:25px;border-top:0;border-left:2px solid var(--tline);border-bottom:2px solid var(--tline);border-bottom-left-radius:16px}
+.tree li.done::before,.tree li.done::after,.tree li.complete::before,.tree li.complete::after{border-color:#718b7c}
+.tree li.skip::after{border-color:#d9b48c}
