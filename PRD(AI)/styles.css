@@ -83,3 +83,9 @@ main{flex:1;min-width:0;display:flex;flex-direction:column}
 @media(max-width:760px){.topbar{height:54px;padding:0 14px}#save-status{display:none}.detail-panel{display:none;position:fixed;top:54px;bottom:0;right:0;width:min(100%,480px);max-width:100%;min-width:0;z-index:10;box-shadow:-8px 0 30px #0002}.detail-panel.mobile-open{display:flex}.conversation{padding:20px 16px 8px}.composer-area{padding:6px 12px 10px}.keyboard-hint{display:none}.message.user{margin-left:20px}}
 .panel-tabs button{display:flex;align-items:center;gap:6px}.ico{flex-shrink:0}
 .key-row input{flex:1;width:auto;max-width:190px}.key-row button{padding:8px 11px}
+/* 계획 지도 호버: 기존 페이지와 동일하게 검은 배경 위에서는 흰 글자를 유지 */
+.t-root-btn:hover{background:#3b3b3b;color:var(--inverse);opacity:1}
+.t-step.current>.t-row:hover{background:#3b3b3b}
+.t-step.current .t-step-btn:hover,.t-step.current .t-del:hover{background:transparent;color:var(--inverse)}
+.t-step.current .t-step-btn:hover b,.t-step.current .t-step-btn:hover span{color:var(--inverse)}
+@media(prefers-color-scheme:dark){.t-root-btn:hover,.t-step.current>.t-row:hover{background:#d4d4cf}}
