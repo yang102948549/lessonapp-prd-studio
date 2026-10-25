@@ -144,6 +144,7 @@ function panel(name) {
 function needKey(message) { panel('settings'); $('api-key').focus(); $('key-status').textContent = message; }
 
 /* ---------- Gemini 호출 ---------- */
+const SAFETY = ['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'HARM_CATEGORY_DANGEROUS_CONTENT'].map(category => ({category, threshold:'BLOCK_ONLY_HIGH'}));
 const noThinking = new Set();
 function thinkingFor(m) { if (noThinking.has(m)) return null; if (/gemini-3/.test(m)) return {thinkingLevel:'minimal'}; if (/2\.5-flash/.test(m)) return {thinkingBudget:0}; return null; }
 const USAGE_KEY = 'oni.usage.v1'; let sessionCalls = 0;
@@ -160,7 +161,7 @@ async function requestAI(system, prompt, schema, maxTokens = 4096) {
       const level = levels[li], cfg = {maxOutputTokens:maxTokens, responseMimeType:'application/json'};
       const think = level.think && thinkingFor(model); if (think) cfg.thinkingConfig = think; if (level.schema) cfg.responseSchema = schema;
       countCall();
-      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {method:'POST', headers:{'Content-Type':'application/json', 'x-goog-api-key':apiKey}, body:JSON.stringify({systemInstruction:{parts:[{text:system}]}, contents:[{role:'user', parts:[{text:prompt}]}], generationConfig:cfg}), signal:ctl.signal});
+      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {method:'POST', headers:{'Content-Type':'application/json', 'x-goog-api-key':apiKey}, body:JSON.stringify({systemInstruction:{parts:[{text:system}]}, contents:[{role:'user', parts:[{text:prompt}]}], generationConfig:cfg, safetySettings:SAFETY}), signal:ctl.signal});
       if (response.ok) break;
       try { detail = await response.text(); } catch { detail = ''; }
       if (response.status === 400 && li < levels.length - 1 && /thinking|responseSchema|response_schema|schema|mime|systemInstruction/i.test(detail) && !/API key/i.test(detail)) { if (think) noThinking.add(model); li++; continue; }
@@ -171,12 +172,13 @@ async function requestAI(system, prompt, schema, maxTokens = 4096) {
     if (!response.ok) {
       const daily = response.status === 429 && /PerDay|per day|daily/i.test(detail);
       const messages = {400:'키 또는 모델 설정을 확인해 주세요.', 401:'유효한 API 키를 입력해 주세요.', 403:'키 권한이나 API 사용 권한을 확인해 주세요.', 404:'이 모델을 찾을 수 없어요. 설정에서 다른 모델을 선택해 주세요.', 500:'AI 서버에 일시적인 문제가 있어요. 잠시 후 다시 시도해 주세요.', 503:'선택한 모델이 지금 혼잡해요. 잠시 후 다시 시도하거나 설정에서 다른 모델을 선택해 주세요.', 429:daily ? '오늘의 무료 사용량을 모두 썼어요. 내일 다시 시도하거나 다른 모델을 선택해 보세요.' : '분당 요청 한도에 도달했어요. 1분쯤 뒤 다시 시도하거나 더 가벼운 모델(Flash-Lite 등)을 선택해 보세요.'};
-      throw new Error(messages[response.status] || 'AI 서비스가 응답하지 않아요. 잠시 후 다시 시도해 주세요.');
+      let why = ''; try { why = JSON.parse(detail).error?.message || ''; } catch {}
+      throw new Error((messages[response.status] || 'AI 서비스가 응답하지 않아요. 잠시 후 다시 시도해 주세요.') + (why ? ` [${response.status}: ${redact(why).slice(0, 160)}]` : ` [${response.status}]`));
     }
     const data = await response.json();
     if (data.candidates?.[0]?.finishReason === 'MAX_TOKENS') throw new Error('응답이 길어 중간에 멈췄어요. 한 번에 말씀하시는 양을 줄여 다시 시도해 주세요.');
     const result = data.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text || '').join('');
-    if (!result) throw new Error('AI가 답변을 만들지 못했어요. 다시 시도해 주세요.');
+    if (!result) { const block = data.promptFeedback?.blockReason, fin = data.candidates?.[0]?.finishReason; throw new Error('AI가 답변을 만들지 못했어요. 다시 시도해 주세요.' + (block || fin ? ` [${block || fin}]` : '')); }
     return redact(result);
   } catch (error) {
     if (error.name === 'AbortError') throw new Error('응답 대기 시간이 지났어요. 다시 시도해 주세요.');
