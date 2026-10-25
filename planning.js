@@ -118,9 +118,9 @@ globalThis.Planning = (() => {
     visual:v=>[`${v.view} · 포인트 색 한 가지`],
     roles:v=>[`조작 · ${eul(v.evidence)}확인 · 설명 역할을 단계마다 교대`],
     exclusions:v=>[`${eul(v.product)}자동 점수화하는 기능 제외`],
-    acceptance:v=>[`${v.tool} 활동이 클릭·터치로 막힘 없이 동작`,`${eul(v.mat)}다시 볼 수 있고 읽은 상태가 유지`,`${eul(v.product)}수정하면 결과 화면도 갱신`,`${v.view}에서 글자와 자료가 잘림 없이 표시`]
+    acceptance:v=>[`핵심 조작(${v.tool})이 클릭·터치로 막힘 없이 동작`,`${eul(v.mat)}다시 볼 수 있고 읽은 상태가 유지`,`${eul(v.product)}수정하면 결과 화면도 갱신`,`화면 크기가 달라도 글자와 자료가 잘림 없이 표시`]
   };
-  const mixBase=new Set(['features','design','visual','exclusions','acceptance','output','teacherView','method','flow','rules','feedback']);
+  const mixBase=new Set(['roles','features','design','visual','exclusions','acceptance','output','teacherView','method','flow','rules','feedback']);
   function subjectGenerated(id,answers){const gen=generators[id];if(!gen)return[];const out=[];subjectList(answers).forEach(s=>{const v=vocabFor(s);if(v)gen(v).forEach(label=>out.push({label,group:s,value:label}));});return out;}
   function bySubject(answers,kind,langFn,table){const out=[];subjectList(answers).forEach(s=>{const items=s.startsWith('제2외국어')?langFn(langName(s)):table[baseOf(s)];if(items)items.forEach(label=>out.push({label,group:s,value:label}));});return out;}
   const subjectLists={
@@ -174,13 +174,13 @@ globalThis.Planning = (() => {
 
     step('results','결과물의 행방',4,'학생이 만든 결과물은 어디로 가나요?','이 질문이 앱에 저장 공간(서버)이 필요한지를 결정해요. “내 화면에만”이면 서버 없이 만들 수 있어요.',['내 화면에만 보임 · 새로고침하면 사라져도 괜찮음','내 기기에 남음 · 나중에 다시 열어 이어서 함','교사가 모아서 봄 · 학생은 제출만 함','같은 모둠 친구끼리 서로 결과를 봄','학급 친구 모두의 결과를 함께 봄','다음 시간·다른 날에도 이어서 쓰고 계속 쌓임(누적)'],{multi:true}),
     step('identity','입장과 학생 확인',4,'학생은 어떻게 들어오고, 앱은 학생을 어떻게 알아보나요?','이름을 받으면 개인정보 관리와 로그인 방식이 달라져요. 꼭 필요한 정보만 받는 쪽이 가장 쉽고 안전해요. 보기는 앞에서 정한 참여 단위(개인·모둠)와 결과 저장 방식에 맞춰 보여드려요.',[],{placeholder:'예: QR로 접속한 뒤 출석번호별 개인 코드를 입력해요. 코드는 교사가 명단으로 나눠 줘요.',when:a=>needsShare(a)||isRealtime(a)}),
-    step('live','공유 시점',4,'친구나 교사 화면에 결과가 언제 나타나야 하나요?','“바로바로”는 화면끼리 실시간으로 연결해야 해서 구성이 더 복잡해져요.',['수업이 끝난 뒤에 확인해도 괜찮음','나타날 필요 없음 · 제출만 받아 두면 됨','제출하면 몇 초 안에 교사 화면에 나타남','친구들의 답이 실시간으로 바로 보임','교사가 공개 버튼을 누르면 모두에게 동시에 공개'],{when:needsShare}),
+    step('live','공유 시점',4,'친구나 교사 화면에 결과가 언제 나타나야 하나요?','“바로바로”는 화면끼리 실시간으로 연결해야 해서 구성이 더 복잡해져요.',['수업이 끝난 뒤에 교사가 확인','제출하면 몇 초 안에 교사 화면에 나타남','친구들의 답이 실시간으로 바로 보임','교사가 공개 버튼을 누르면 모두에게 동시에 공개','나타날 필요 없음 · 제출 기록만 남기면 됨'],{when:needsShare}),
     step('retention','보관 기간',4,'저장한 결과는 언제까지 보관하나요?','오래 보관할수록 개인정보 관리와 저장 공간이 중요해져요.',['수업이 끝나면 바로 삭제','그 학기(학년) 동안 보관','교사가 직접 지울 때까지 보관','포트폴리오로 계속 누적'],{when:needsShare}),
     step('files','사진·파일',4,'학생이 사진이나 파일을 올리나요?','파일 저장에는 별도 저장소가 필요하고 무료 용량이 한정돼 있어요.',['글과 선택만 사용 · 사진·파일 없음','사진이나 그림을 올림','문서·음성·영상 파일을 올림'],{when:a=>needsShare(a)&&wantsUpload(a)}),
     step('aiuse','AI 사용',4,'앱 안에서 AI를 쓰나요?','학생이 쓰는 도중에 AI가 답해야 하면 열쇠(API 키)를 숨겨 줄 서버가 필요하고 무료 호출 한도도 신경 써야 해요. 미리 만들어 넣는 방식이 가장 안전하고 무료로 가능해요.',['활동 중 AI 사용 없음','교사가 수업 전에 AI로 자료를 만들어 앱에 넣음 · 학생 활동 중에는 AI 없음','학생이 활동 중 AI에게 질문하고 답을 받음','학생이 쓴 글에 AI가 피드백을 줌']),
     step('export','결과 받기',4,'수업이 끝난 뒤 교사는 결과를 어떻게 받고 싶나요?','구글 시트로 자동 정리되는 방식은 교사에게 가장 익숙해요.',['결과를 따로 받을 필요 없음 · 앱 화면에서만 확인','엑셀·CSV 파일로 내려받음','구글 시트에 자동으로 쌓임','인쇄하거나 PDF로 저장'],{when:needsShare}),
 
-    step('teacher','교사의 역할',5,'교사는 어떤 화면이나 기능이 필요한가요?','교사용 관리 화면이 꼭 필요한지 정해요. 학생 화면만으로 수업을 운영할 수도 있어요.',['별도 관리 화면 없음 · 학생 결과를 보고 진행','교사가 시작·종료와 다음 단계 공개','참여 현황과 완료 여부만 확인','학생 결과를 모아 보고 공개 여부 조절','교사가 수업 전 자료·문항을 편집'],{multi:true}),
+    step('teacher','교사의 역할',5,'교사는 어떤 화면이나 기능이 필요한가요?','교사용 관리 화면이 꼭 필요한지 정해요. 학생 화면만으로 수업을 운영할 수도 있어요.',['별도 관리 화면 없음 · 교사는 수업을 보며 진행','교사가 시작·종료와 다음 단계 공개','참여 현황과 완료 여부만 확인','학생 결과를 모아 보고 공개 여부 조절','교사가 수업 전 자료·문항을 편집'],{multi:true}),
     step('teacherView','교사 화면 상세',5,'교사 화면에는 무엇을 보여줄까요?','필요한 결과 표시와 제어 기능을 골라주세요. 기능을 고르면 관리 권한과 상태 변화도 상세 PRD에 정리합니다.',['입장 QR·링크와 참여 인원','제출·미제출 현황','답변 카드 모아보기','투표·수치 결과를 차트로 표시','키워드 모아보기','학생 입력 잠금·마감·일시정지','답변 숨기기·공개 전 확인','결과 CSV 다운로드','자료·문항 편집'],{multi:true,when:a=>!!a.teacher&&!String(a.teacher).includes('별도 관리 화면 없음')}),
     step('features','추가 기능',5,'활동을 돕는 기능을 더 골라볼까요?','선택한 활동과 충돌하지 않는 기능만 남기세요. 첫 버전에 꼭 필요한 것부터 정합니다.',['읽음·선택·진행 상태 표시','이전 자료 다시 보기','남은 시간을 참고용으로 표시 · 자동 종료 없음','단계마다 답변 임시 보관','힌트를 원하는 때 열기','클릭·터치로 선택 · 드래그 대체 제공','추가 기능 없이 핵심 활동에 집중'],{multi:true}),
     step('design','화면 표현',5,'화면은 어떤 느낌이고 무엇이 잘 보여야 할까요?','색상뿐 아니라 긴 글, 작은 화면, 터치 조작도 고려해요.',['차분한 화면 · 본문과 입력창을 크게','카드 중심 화면 · 자료와 선택 상태를 명확하게','단계 중심 화면 · 지금 할 일과 다음 행동을 강조','시각 자료 중심 · 설명을 함께 제공'],{multi:true}),
@@ -197,7 +197,7 @@ globalThis.Planning = (() => {
   const value=(answers,id)=>Array.isArray(answers[id])?answers[id].join(' / '):answers[id]||'';
   const stepById=id=>steps.find(s=>s.id===id);
   const val=(a,id)=>{const s=stepById(id);return s&&(!s.when||s.when(a))?value(a,id):'';};
-  const isRealtime=a=>/몇 초 안에|실시간|동시에 공개/.test(val(a,'live'))||/동시에|모든 학생|실시간/.test(value(a,'control'));
+  const isRealtime=a=>/몇 초 안에|실시간|동시에 공개/.test(val(a,'live'))||/동시에|모든 학생|실시간/.test(value(a,'control'))||/다음 단계 공개|입력 잠금|일시정지/.test(value(a,'teacher')+' '+value(a,'teacherView'));
   const stacks={
     static:{label:'정적 웹페이지 + GitHub Pages',one:'서버 없이 브라우저 안에서만 동작해요',
       frontend:'HTML·CSS·JavaScript (프레임워크 없이 파일 1~3개)',backend:'없음. 이어서 하기가 필요하면 브라우저 저장소(localStorage)만 사용',deploy:'GitHub Pages 무료 링크, QR로 공유',
@@ -298,16 +298,18 @@ globalThis.Planning = (() => {
       case 'live':
         return /친구/.test(val(a,'results'))?list:keep(/친구들의 답/);
       case 'input':
-        return inter&&!/짧은 글|근거 문장/.test(inter)?keep(/자 이내/):list;
+        return inter&&!/짧은 글|근거 문장|작성|쓰기/.test(inter)?keep(/자 이내/):list;
+      case 'interaction':{const extra=(stepById('interaction').options||[]).filter(l=>!/짧은 글|객관식|친구 의견|말이나 종이/.test(l)&&!list.some(o=>lab(o)===l)).map(l=>({label:l,group:'공통',value:l}));return [...list,...extra];}
+      case 'output':return list.some(o=>/인쇄하기 좋은/.test(lab(o)))?keep(/^선택한 자료·이유·제안|^초안과 수정본/):list;
       case 'features':
-        return inter&&!/카드|수치/.test(inter)?keep(/드래그/):list;
+        {const l2=inter&&!/카드|수치/.test(inter)?keep(/드래그/):list;return l2.some(o=>/다시 보기|임시 보관/.test(lab(o))&&o.group&&o.group!=='공통')?l2.filter(o=>!/^이전 자료 다시 보기|^단계마다 답변 임시 보관/.test(lab(o))):l2;}
       case 'teacher':
         return sh?list:keep(/참여 현황|결과를 모아/);
       case 'teacherView':
-        return sh?list:keep(/제출|모아보기|CSV|키워드|투표|차트|숨기기/);
+        {const l2=sh?list:keep(/제출|모아보기|CSV|키워드|투표|차트|숨기기/);return l2.some(o=>/(카드로|키워드로) 모아보기/.test(lab(o)))?l2.filter(o=>!/^답변 카드 모아보기|^키워드 모아보기/.test(lab(o))):l2;}
       case 'exclusions':{const tch=val(a,'teacher');let o=list;const drop=re=>{o=o.filter(x=>!re.test(lab(x)));};
         if(/구글 계정으로 로그인/.test(val(a,'identity')))drop(/로그인 제외/);if(tch&&!/별도 관리 화면 없음/.test(tch))drop(/관리 화면 제외/);if(isRealtime(a))drop(/실시간 학급 집계/);
-        if(/학생이 활동 중 AI|AI가 피드백/.test(val(a,'aiuse')))drop(/외부 AI 호출 제외/);if(/올림/.test(val(a,'files')))drop(/업로드 제외/);if(/친구 의견/.test(inter))drop(/채팅·댓글/);return o;}
+        if(/학생이 활동 중 AI|AI가 피드백/.test(val(a,'aiuse')))drop(/외부 AI 호출 제외/);if(/올림/.test(val(a,'files')))drop(/업로드 제외/);if(/친구.*(의견|답글)/.test(inter))drop(/채팅·댓글/);return o;}
       case 'extra':
         return sh?list:keep(/다시 들어오면|두 번 접속/);
       case 'acceptance':
@@ -316,7 +318,7 @@ globalThis.Planning = (() => {
     }
   }
   /* 어떤 질문이든 "해당 없음" 답을 고를 수 있게, 필요 없음 계열 선택지를 마지막에 보탠다 */
-  const NONE={rules:'이동 제한 없음 · 언제든 자유롭게 이동',feedback:'별도 안내 없이 학생이 스스로 확인',design:'특별한 요구 없음 · 기본 스타일로',visual:'특별한 요구 없음 · 기본 스타일로',exclusions:'제외할 기능 없음',materials:'별도 자료 없음 · 교사가 말로 안내'};
+  const NONE={rules:'이동 제한 없음 · 언제든 자유롭게 이동',feedback:'별도 안내 없이 학생이 스스로 확인',design:'특별한 요구 없음 · 기본 스타일로',visual:'특별한 요구 없음 · 기본 스타일로',exclusions:'제외할 기능 없음',materials:'별도 자료 없음 · 교사가 말로 안내',story:'별도 이야기 없이 탐구 질문으로 시작'};
   function options(id,answers){const list=refineOptions(id,answers,baseOptions(id,answers));const none=NONE[id];if(!none||list.some(o=>lab(o)===none))return list;return [...list,list.length&&typeof list[0]!=='string'?{label:none,group:'공통',value:none}:none];}
   const sectionDefs=[
     ['기본 수업 정보',['project','school','grades','subjects','idea','objective','duration']],
@@ -346,7 +348,7 @@ globalThis.Planning = (() => {
       if(u.solo&&/모둠 코드/.test(v('identity')))issues.push('개인별 활동인데 모둠 코드로 입장하도록 정했어요. 개별 참여코드나 입장코드를 검토해 주세요.');
       if(u.solo&&/교대|모둠/.test(value(answers,'roles')))issues.push('개인별 활동인데 모둠 역할이 정해져 있어요. 역할 질문을 다시 확인해 주세요.');
       if(u.cls&&/각자의 속도/.test(value(answers,'control')))issues.push('학급 전체 활동인데 학생이 각자의 속도로 진행하도록 정했어요.');
-      if(/친구 의견/.test(value(answers,'interaction'))&&answers.results&&!shared)issues.push('친구 의견 보기·답글에는 결과를 서로 볼 수 있어야 해요. “결과물의 행방”을 확인해 주세요.');}
+      if(/친구.*(의견|답글)/.test(value(answers,'interaction'))&&answers.results&&!shared)issues.push('친구 의견 보기·답글에는 결과를 서로 볼 수 있어야 해요. “결과물의 행방”을 확인해 주세요.');}
     if(/교사용 관리 화면 제외/.test(v('exclusions'))&&/교사가 시작|참여 현황|공개 여부|자료·문항/.test(v('teacher')))issues.push('교사용 기능과 관리 화면 제외 조건을 맞춰 주세요.');
     return issues;
   }
