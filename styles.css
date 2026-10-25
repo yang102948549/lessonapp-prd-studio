@@ -174,3 +174,11 @@
 .t-step.current .t-step-btn:hover b,.t-step.current .t-step-btn:hover span{color:var(--inverse)}
 .chip[aria-pressed=true]:hover,.chip[aria-pressed=true]+.chip-edit-btn:hover{background:#3b3b3b;color:var(--inverse);border-color:#3b3b3b}
 #steps button.current:hover .step-dot{background:var(--accent);color:var(--inverse)}
+
+/* 사이드바: 아직 답하지 않은 항목은 초록 테두리의 빈 원, 지금 질문은 같은 색의 굵은 테두리 + 연한 배경 */
+#steps .step-dot{border:1.5px solid #718b7c;background:transparent}
+#steps button.current .step-dot,#steps .current .step-dot,#steps button.current:hover .step-dot{background:transparent;border:2.5px solid #718b7c;color:#718b7c}
+#steps button.current{background:var(--surface);border-radius:8px}
+#steps button.current.done .step-dot,#steps button.current.done:hover .step-dot{background:#718b7c;border-color:#718b7c;color:#fff}
+#steps button.skip .step-dot{border:1.5px dashed #9b6026;color:#9b6026}
+#steps button.done .step-dot{background:#718b7c;border-color:#718b7c;color:#fff}
