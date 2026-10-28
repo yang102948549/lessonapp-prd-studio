@@ -91,14 +91,11 @@ function renderMessages() {
   const root = $('messages'); root.replaceChildren();
   const add = (role, build) => { const m = document.createElement('div'); m.className = 'message ' + role; if (role === 'assistant') { const w = document.createElement('div'); w.className = 'who'; w.textContent = '✳ 수업 웹앱 개발 도우미'; m.append(w); } build(m); root.append(m); return m; };
   state.messages.forEach(msg => add(msg.role, m => { if (msg.role === 'user') m.append(document.createTextNode(msg.text)); else if (msg.error) { const e = document.createElement('div'); e.className = 'error-msg'; e.textContent = msg.text; m.append(e); } else m.append(renderMd(msg.text)); }));
-  const cs = !busy && sectionById(currentSection());
-  if (cs) { const q = document.createElement('div'); q.className = 'q-block'; const h = document.createElement('h2'); h.textContent = cs.question; const p = document.createElement('p'); p.textContent = cs.help; q.append(h, p); root.append(q); }
   if (guideActive()) root.append(guideCard());
   if (busy) add('assistant', m => { const t = document.createElement('span'); t.className = 'typing'; t.setAttribute('aria-label', '답변을 생각하고 있어요'); t.innerHTML = '<i></i><i></i><i></i>'; m.append(t); });
 }
 function renderChips() {
   const root = $('chips'); root.replaceChildren();
-  $('cur-open').hidden = guideActive();
   if (guideActive()) return;
   if (busy) { for (let i = 0; i < 3; i++) { const s = document.createElement('span'); s.className = 'chip skeleton'; root.append(s); } return; }
   state.chips.forEach(text => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = text; b.title = '입력창에 담기'; b.onclick = () => useChip(text); root.append(b); });
@@ -303,8 +300,8 @@ function send(text) {
   state.messages.push({role:'user', text:redact(text)}); state.chips = []; persist(); askAI(); return true;
 }
 /* 교육과정 성취기준 안내: AI가 학년·교과를 물을 차례(처음 포함)에는 칩 대신 채팅 안에서 성취기준을 검색해 고른다 */
-let curEl = null, curHandle = null, curDismissed = false, curForced = false;
-const guideActive = () => !busy && !curDismissed && (curForced || ['school', 'grades', 'subjects', 'idea'].includes(state.focus) || !state.messages.length);
+let curEl = null, curHandle = null, curDismissed = false;
+const guideActive = () => !busy && !curDismissed && (['school', 'grades', 'subjects', 'idea'].includes(state.focus) || !state.messages.length);
 function guideCard() {
   if (curEl) return curEl;
   curEl = document.createElement('div'); curEl.className = 'cur-guide';
@@ -313,15 +310,14 @@ function guideCard() {
   const body = document.createElement('div');
   const act = document.createElement('div'); act.className = 'cur-guide-actions';
   const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'text-button'; skip.textContent = '직접 입력할게요';
-  skip.onclick = () => { curDismissed = true; curForced = false; render(); };
+  skip.onclick = () => { curDismissed = true; render(); };
   act.append(skip); curEl.append(h, sub, body, act);
   curHandle = Curriculum.mount(body, {base: '../', applyLabel: '이 성취기준으로 이야기하기', onApply: r => {
     if (send(`수업 교육과정은 아래 성취기준이에요. 사용 수업과 학습 목표에 반영해 주세요.
-${Curriculum.format(r)}`)) { curHandle.reset(); curForced = false; }
+${Curriculum.format(r)}`)) curHandle.reset();
   }});
   return curEl;
 }
-$('cur-open').onclick = () => { curForced = true; curDismissed = false; render(); scrollChat(); };
 $('save-status').onclick = () => panel('settings');
 $('composer').onsubmit = e => { e.preventDefault(); if (send($('chat-input').value)) $('chat-input').value = ''; };
 $('chat-input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('composer').requestSubmit(); } };
@@ -332,7 +328,7 @@ function download(blob, name) { const url = URL.createObjectURL(blob), a = docum
 $('download-doc').onclick = () => download(new Blob([docText()], {type:'text/markdown;charset=utf-8'}), (currentProject().name.replace(/[\\/:*?"<>|]/g, '') || 'PRD') + '-PRD.md');
 
 /* ---------- 프로젝트 ---------- */
-function resetView() { editingId = ''; curDismissed = false; curForced = false; if (curHandle) curHandle.reset(); mapSel = ''; mapSeen = ''; $('chat-input').value = ''; $('chat-notice').textContent = ''; $('detail-panel').classList.remove('mobile-open'); }
+function resetView() { editingId = ''; curDismissed = false; if (curHandle) curHandle.reset(); mapSel = ''; mapSeen = ''; $('chat-input').value = ''; $('chat-notice').textContent = ''; $('detail-panel').classList.remove('mobile-open'); }
 function switchProject(id) { if (busy || id === currentId) return; persist(); currentId = id; state = loadState(currentProject().state); resetView(); persist(); render(); scrollChat(); }
 function newProject() {
   if (busy) return; if (projects.length >= MAX_PROJECTS) { toast(`프로젝트는 최대 ${MAX_PROJECTS}개까지 저장할 수 있어요.`); return; }

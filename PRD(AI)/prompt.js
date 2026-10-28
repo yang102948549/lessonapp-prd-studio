@@ -1,7 +1,7 @@
 /* AI 역할 지침과 PRD 구조. 답변 품질은 이 파일의 문구로 조정합니다. */
 globalThis.Prompt = (() => {
   /* PRD 섹션·질문 묶음·기획서 구성은 루트 사이트의 planning.js와 같은 것을 쓴다 */
-  const sections = Planning.steps.map(s => ({id:s.id, title:s.title, group:s.group, question:s.question, help:s.help, hint:`${s.question} ${s.help}`}));
+  const sections = Planning.steps.map(s => ({id:s.id, title:s.title, group:s.group, hint:`${s.question} ${s.help}`}));
   const parts = Planning.groups.map((title, g) => ({id:'G' + g, title, ids:sections.filter(s => s.group === g).map(s => s.id)}));
   const tops = Planning.parts.map((p, i) => ({id:'T' + i, title:p.title, groups:p.groups.map(g => 'G' + g)}));
   const docSections = Planning.sectionDefs.map(([title, ids], i) => ({title:`${i + 1}. ${title}`, ids}));

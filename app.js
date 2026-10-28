@@ -210,7 +210,7 @@ function render(){
   $('continue').hidden=!def?.multi;$('continue').disabled=!selected.size||busy;
   $('skip-step').hidden=!def||state.step<3;$('skip-step').disabled=busy;
   $('ai-suggest').hidden=!def||state.step<3;$('ai-suggest').disabled=busy;
-  $('selection-note').textContent=def?.multi?'여러 개 선택 가능 · 직접 입력한 내용도 함께 반영해요':'칩은 답변의 출발점이에요. 선택 후 다음 질문에서 구체화합니다.';
+  $('selection-note').textContent=def?.multi?'여러 개 선택 가능 · 직접 입력한 내용도 함께 반영해요':'';
   $('previous-answer').hidden=!def||!answerText(def.id);$('clear-answer').hidden=!def||!answerText(def.id);$('clear-answer').disabled=busy;$('previous-answer').textContent=def&&answerText(def.id)?`이전에 정한 내용: ${answerText(def.id)}`:'';
   let options=def?.id==='grades'?gradeOptions():Planning.options(def?.id,state.answers);if(def?.id==='subjects')options=[...options,...state.extraSubjects];
   renderChips(def,options);
