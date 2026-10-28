@@ -1,7 +1,7 @@
 const $ = id => document.getElementById(id);
 const PROJECTS_KEY = 'oni.prdai.projects.v1', DEFAULT_NAME = '나의 수업 웹앱', MAX_PROJECTS = 20;
 const SECTIONS = Prompt.sections;
-const fresh = () => ({version:1, messages:[], doc:{}, chips:Prompt.welcome.chips.slice(), ready:false, focus:''});
+const fresh = () => ({version:1, messages:[], doc:{}, chips:[], ready:false, focus:''});
 let projects = [], currentId = '', state = fresh(), apiKey = '', model = 'gemini-3.8-flash', modelList = [], busy = false, toastTimer, editingId = '', mapOpen = new Set(['T0', 'G0']), mapSel = '', mapSeen = '';
 const uid = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -90,7 +90,6 @@ function renderMd(text) {
 function renderMessages() {
   const root = $('messages'); root.replaceChildren();
   const add = (role, build) => { const m = document.createElement('div'); m.className = 'message ' + role; if (role === 'assistant') { const w = document.createElement('div'); w.className = 'who'; w.textContent = '✳ 수업 웹앱 개발 도우미'; m.append(w); } build(m); root.append(m); return m; };
-  add('assistant', m => m.append(renderMd(Prompt.welcome.text)));
   state.messages.forEach(msg => add(msg.role, m => { if (msg.role === 'user') m.append(document.createTextNode(msg.text)); else if (msg.error) { const e = document.createElement('div'); e.className = 'error-msg'; e.textContent = msg.text; m.append(e); } else m.append(renderMd(msg.text)); }));
   const cs = !busy && sectionById(currentSection());
   if (cs) { const q = document.createElement('div'); q.className = 'q-block'; const h = document.createElement('h2'); h.textContent = cs.question; const p = document.createElement('p'); p.textContent = cs.help; q.append(h, p); root.append(q); }

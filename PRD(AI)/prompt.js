@@ -60,16 +60,10 @@ focus는 이번 답변의 마지막 질문이 다루는 PRD 섹션 id입니다(�
     return `[현재 PRD 초안]\n${current}\n\n[지금까지의 대화]\n${history}\n\n위 대화의 마지막 교사 메시지에 답하세요.`;
   }
 
-  /* API 호출 없이 보여 주는 첫 안내 */
-  const welcome = {
-    text: '안녕하세요, 수업 웹앱 개발 도우미예요.\n먼저 **어떤 학년·교과 수업**에서 쓰실 생각인지 알려 주세요. 아래에서 성취기준을 검색해 고르시거나, 말로 편하게 적으셔도 돼요. 정해진 형식은 없고, 말씀해 주시면 거기에 맞춰 제가 이어서 여쭙고 제안할게요.',
-    chips: []
-  };
-
   const chatSchema = {type:'OBJECT', properties:{
     reply:{type:'STRING'}, chips:{type:'ARRAY', items:{type:'STRING'}},
     updates:{type:'ARRAY', items:{type:'OBJECT', properties:{id:{type:'STRING'}, markdown:{type:'STRING'}}, required:['id','markdown']}},
     ready:{type:'BOOLEAN'}, title:{type:'STRING'}, focus:{type:'STRING'}}, required:['reply','chips','updates','ready','title','focus']};
 
-  return {sections, parts, tops, docSections, role, chatPrompt, welcome, chatSchema};
+  return {sections, parts, tops, docSections, role, chatPrompt, chatSchema};
 })();
