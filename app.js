@@ -1,7 +1,7 @@
 const $ = id => document.getElementById(id);
 const STORAGE = 'lessonapp.workspace.v1', PROJECTS_KEY = 'oni.projects.v1', DEFAULT_NAME = '나의 수업 웹앱', MAX_PROJECTS = 20, QUOTA_BYTES = 5*1024*1024;
 const definitions = Planning.steps;
-const fresh = () => ({version:3,step:0,answers:{},messages:[],draft:'',draftStale:false,previousDraft:'',extraSubjects:[]});
+const fresh = () => ({version:3,step:0,answers:{},messages:[],draft:'',previousDraft:'',extraSubjects:[]});
 let state = fresh(), projects = [], currentId = '';
 const uid=()=>'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const loadState=raw=>{try{const saved=Planning.migrate(raw);return saved?{...fresh(),...saved}:fresh();}catch{return fresh();}};
@@ -53,7 +53,6 @@ function renderDocument(){
   $('quality-count').textContent=`설계 항목 ${done}/${checks.length} 작성 · 상세도는 최종 검토 필요`;
   $('quality-items').replaceChildren();checks.filter(c=>!c.done).forEach(c=>{const button=document.createElement('button');button.textContent=c.label+' 작성하기';button.disabled=busy;button.onclick=()=>goStep(definitions.findIndex(s=>s.id===c.id));$('quality-items').append(button);});
   $('conflict-note').textContent=Planning.conflicts(state.answers).join('\n');
-  $('stale-note').hidden=!state.draftStale;
   $('restore-draft').hidden=!state.previousDraft;
   $('draft-label').textContent=state.draft?'상세 문서 · 교사 검토 필요':'답변 기반 설계 초안';
   if(!editing)$('document-editor').value=markdown();
@@ -67,10 +66,10 @@ function goStep(index){if(busy)return;state.step=index;syncSelected();persist();
 function removeAnswer(id){
   if(busy||!isAnswered(id))return;
   const keys=[id,...(CASCADE[id]||[])].filter(k=>k in state.answers);const removed=Object.fromEntries(keys.map(k=>[k,state.answers[k]]));
-  keys.forEach(k=>delete state.answers[k]);state.draftStale=!!state.draft;
+  keys.forEach(k=>delete state.answers[k]);
   if(definitions[state.step]&&!isVisible(definitions[state.step]))state.step=firstUnanswered();
   syncSelected();$('chat-input').value='';$('chat-notice').textContent='';persist();render();
-  toast(`“${definitions.find(d=>d.id===id).title}” 답변을 지웠어요.`,{label:'되돌리기',run:()=>{if(busy)return;Object.entries(removed).forEach(([k,v])=>{if(!isAnswered(k))state.answers[k]=v;});if(state.draft)state.draftStale=true;syncSelected();persist();render();}});
+  toast(`“${definitions.find(d=>d.id===id).title}” 답변을 지웠어요.`,{label:'되돌리기',run:()=>{if(busy)return;Object.entries(removed).forEach(([k,v])=>{if(!isAnswered(k))state.answers[k]=v;});syncSelected();persist();render();}});
 }
 function resetView(){selected=new Set(Array.isArray(state.answers[definitions[state.step]?.id])?state.answers[definitions[state.step].id]:[]);editing=false;$('document-editor').hidden=true;$('prd-preview').hidden=false;$('edit-doc').textContent='직접 편집';$('chat-input').value='';$('chat-notice').textContent='';$('detail-panel').classList.remove('mobile-open');}
 function switchProject(id){if(busy||id===currentId)return;persist();currentId=id;state=loadState(currentProject().state);resetView();persist();render();scrollChat();}
@@ -215,7 +214,7 @@ function render(){
   $('previous-answer').hidden=!def||!answerText(def.id);$('clear-answer').hidden=!def||!answerText(def.id);$('clear-answer').disabled=busy;$('previous-answer').textContent=def&&answerText(def.id)?`이전에 정한 내용: ${answerText(def.id)}`:'';
   let options=def?.id==='grades'?gradeOptions():Planning.options(def?.id,state.answers);if(def?.id==='subjects')options=[...options,...state.extraSubjects];
   renderChips(def,options);
-  $('chat-notice').classList.toggle('progress',busy);$('send').disabled=busy;$('ai-refine').disabled=busy;$('new-chat').disabled=busy;
+  $('chat-notice').classList.toggle('progress',busy);$('send').disabled=busy;$('new-chat').disabled=busy;
   $('chat-input').disabled=busy;$('edit-doc').disabled=busy;
   $('cancel-edit').hidden=!def||!isAnswered(def.id)||firstUnanswered()===state.step;$('cancel-edit').disabled=busy;
   renderStackCard(def);renderCurCard(def);renderMap();renderUsage();
@@ -228,7 +227,7 @@ function applyAnswer(def,value){
   if(def.id==='activity'&&changed)delete state.answers.method;
   if(def.id==='teacher'&&String(value).includes('별도 관리 화면 없음'))delete state.answers.teacherView;
   if(changed&&['school','subjects','activity','method'].includes(def.id)&&state.answers.flow){$('chat-notice').textContent='활동의 방향을 바꿨어요. 기존 자료·활동 흐름·규칙은 보존했으니 새 방향에 맞는지 다시 확인해 주세요.';}
-  state.answers[def.id]=value;if(state.draft)state.draftStale=true;
+  state.answers[def.id]=value;if(state.draft)
   return changed;
 }
 function accept(value){const def=definitions[state.step];if(!def)return;
@@ -271,38 +270,8 @@ async function requestAI(prompt,key=apiKey,chosenModel=model,maxTokens=16000,sch
   }catch(error){if(error.name==='AbortError')throw new Error('응답 대기 시간이 지났어요. 내용은 보관되어 있으니 다시 시도해 주세요.');if(error instanceof TypeError)throw new Error('네트워크 연결을 확인해 주세요. 작성 중인 내용은 유지됩니다.');throw error;}finally{clearTimeout(timeout);}
 }
 function parseJSON(text){const t=text.trim().replace(/^```(?:json)?\s*/i,'').replace(/```\s*$/,'');try{return JSON.parse(t);}catch{const a=t.indexOf('{'),b=t.lastIndexOf('}');if(a>=0&&b>a)return JSON.parse(t.slice(a,b+1));throw new Error('AI 응답 형식을 읽지 못했어요. 다시 시도해 주세요.');}}
-const SECTION_SCHEMA={type:'OBJECT',properties:{sections:{type:'ARRAY',items:{type:'OBJECT',properties:{n:{type:'INTEGER'},markdown:{type:'STRING'}},required:['n','markdown']}}},required:['sections']};
 const COACH_SCHEMA={type:'OBJECT',properties:{answer:{type:'STRING'},choices:{type:'ARRAY',items:{type:'STRING'}}},required:['answer','choices']};
 const DRAFT_SCHEMA={type:'OBJECT',properties:{draft:{type:'STRING'}},required:['draft']};
-/* 기존 문서를 "## 번호." 단위로 나눈다. 필요한 섹션만 AI에 보내 토큰과 호출을 줄인다 */
-function draftMarks(text){const marks=[];const re=/^##\s*(\d)[.．]/gm;let m;while((m=re.exec(text)))marks.push({n:Number(m[1]),start:m.index});marks.forEach((k,i)=>{k.end=i+1<marks.length?marks[i+1].start:text.length;});return marks;}
-function pickSections(text,nums){if(!text)return '';const marks=draftMarks(text);return nums.map(n=>marks.find(k=>k.n===n)).filter(Boolean).map(k=>text.slice(k.start,k.end).trim()).join('\n\n');}
-function replaceSections(text,got){let out=text;const missing=[];Object.entries(got).forEach(([n,md])=>{const k=draftMarks(out).find(x=>x.n===Number(n));if(k)out=out.slice(0,k.start)+md.trim()+'\n\n'+out.slice(k.end);else missing.push(md.trim());});return (out.trim()+(missing.length?'\n\n'+missing.join('\n\n'):'')).trim();}
-const SECTION_TITLES={1:'기본 수업 정보',2:'사용 환경 및 접속 방식',3:'활동 구성·실행 방식과 진행 규칙',4:'핵심 구현 기능: 교사 화면과 학생 화면',5:'디자인 및 화면 스타일',6:'운영 조건·기술 구성',7:'완료 기준'};
-const withTitle=(n,md)=>new RegExp(`^##\\s*${n}[.．]`).test(md)?md:`## ${n}. ${SECTION_TITLES[n]}\n${md}`;
-async function refine(instruction){
-  if(!apiKey){keySettings();$('key-status').textContent='상세 PRD 생성에는 개인 API 키가 필요해요. 답변 기반 초안은 키 없이 다운로드할 수 있어요.';return;}
-  if(busy)return;busy=true;render();$('chat-notice').textContent='상세 PRD를 작성하고 있어요… (AI 호출 4회, 2번씩 나누어 진행)';
-  try{const current=state.draft||'';const got={};let done=0;
-    const run=async(nums,context='')=>{const json=parseJSON(await requestAI(Planning.promptPart(state.answers,pickSections(current,nums),instruction,nums,context),apiKey,model,8192,SECTION_SCHEMA));(json.sections||[]).forEach(x=>{if(nums.includes(Number(x.n))&&x.markdown)got[Number(x.n)]=String(x.markdown).trim();});done++;$('chat-notice').textContent=`상세 PRD 작성 중… (${done}/4)`;};
-    await Promise.all(Planning.prdWaves[0].map(nums=>run(nums)));
-    await Promise.all(Planning.prdWaves[1].map(nums=>run(nums,nums.includes(7)?got[3]||'':'')));
-    const missing=[1,2,3,4,5,6,7].filter(n=>!got[n]);if(missing.length)throw new Error(`일부 섹션(${missing.join(', ')}번)이 만들어지지 않았어요. 기존 문서를 보존했으니 다시 생성해 주세요.`);
-    const result=[1,2,3,4,5,6,7].map(n=>withTitle(n,got[n])).join('\n\n');
-    state.previousDraft=markdown();state.draft=result;state.draftStale=false;
-    addMessage('assistant','상세 PRD 초안을 작성했어요. 기획서 탭의 [제안·교사 검토 필요] 부분과 자료·정답 연결을 확인해 주세요. 바꾸고 싶은 점을 여기서 이야기하면 문서에서 해당 부분만 수정해요(AI 호출 1회).');persist();$('chat-notice').textContent='';
-  }catch(error){$('chat-notice').textContent=error.message;}finally{busy=false;render();scrollChat();}
-}
-/* 상세 PRD가 있을 때의 수정 요청: 전체를 다시 만들지 않고 한 번의 호출로 바뀌는 섹션만 고친다 */
-async function editDraft(instruction){
-  if(busy)return;busy=true;render();$('chat-notice').textContent='문서에서 바꿀 부분만 수정하고 있어요… (AI 호출 1회)';
-  try{const json=parseJSON(await requestAI(Planning.editPrompt(state.answers,state.draft,instruction),apiKey,model,8192,SECTION_SCHEMA));
-    const got={};(json.sections||[]).forEach(x=>{const n=Number(x.n);if(n>=1&&n<=7&&x.markdown)got[n]=withTitle(n,String(x.markdown).trim());});
-    if(!Object.keys(got).length)throw new Error('바꿀 부분을 찾지 못했어요. 어느 부분을 어떻게 바꿀지 조금 더 구체적으로 적어 주세요.');
-    state.previousDraft=markdown();state.draft=replaceSections(state.draft,got);state.draftStale=false;
-    addMessage('assistant',`문서의 ${Object.keys(got).map(n=>`${n}번`).join(', ')} 섹션을 고쳤어요. 기획서 탭에서 확인해 주세요. 마음에 들지 않으면 “이전 문서”로 되돌릴 수 있어요.`);persist();$('chat-notice').textContent='';
-  }catch(error){$('chat-notice').textContent=error.message;}finally{busy=false;render();scrollChat();}
-}
 async function coach(text,proposal=false){
   if(!apiKey){keySettings();$('key-status').textContent='AI와 함께 구체화하려면 개인 API 키를 연결해 주세요.';return false;}
   if(busy)return false;busy=true;if(!proposal)addMessage('user',text);persist();render();$('chat-notice').textContent=proposal?'현재 활동에 맞는 답변 초안을 제안하고 있어요…':'선택한 과목과 활동을 바탕으로 함께 생각하고 있어요…';
@@ -313,7 +282,7 @@ async function coach(text,proposal=false){
   }catch(error){$('chat-notice').textContent=error.message;return false;}finally{busy=false;render();scrollChat();}
 }
 function setChatMode(mode){return;chatMode=mode;$('answer-mode').setAttribute('aria-pressed',String(mode==='answer'));$('coach-mode').setAttribute('aria-pressed',String(mode==='coach'));$('composer-label').textContent=mode==='coach'?'코치와 편하게 의논하세요':'직접 이야기해 주세요';if(!busy)render();}
-function processText(text){const def=definitions[state.step];if(!def){if(apiKey){addMessage('user',text);persist();state.draft?editDraft(text):refine(text);}else{addMessage('user',text);state.draft=markdown()+'\n\n## 추가 요청\n'+text;addMessage('assistant','추가 요청을 기획서에 기록했어요. AI와 대화하며 보완하려면 오른쪽 설정에서 API 키를 연결해 주세요.');persist();render();scrollChat();}return;}
+function processText(text){const def=definitions[state.step];if(!def){addMessage('user',text);state.draft=markdown()+'\n\n## 추가 요청\n'+text;addMessage('assistant','추가 요청을 기획서 끝에 기록했어요. 기획서 탭에서 확인하거나 직접 편집할 수 있어요.');persist();render();scrollChat();return;}
   if(def.id==='school'){const match=[['초등','초등학교'],['중학','중학교'],['고등','고등학교']].filter(([word])=>text.includes(word));if(match.length!==1){$('chat-notice').textContent='초등학교·중학교·고등학교 중 하나를 먼저 선택해 주세요. 학년은 다음 단계에서 여러 개 선택할 수 있어요.';return false;}const grades=[...text.matchAll(/[1-6]/g)].map(m=>`${m[0]}학년`).filter(g=>match[0][1]==='초등학교'||Number(g[0])<=3);accept(match[0][1]);if(grades.length){state.answers.grades=[...new Set(grades)];selected=new Set(state.answers.grades);persist();render();}return;}
   if(def.id==='grades'){const numbers=[...text.matchAll(/[1-6]/g)].map(m=>`${m[0]}학년`);const range=text.match(/([1-6])\s*(?:~|-|부터)\s*([1-6])/);if(range)for(let n=Number(range[1]);n<=Number(range[2]);n++)numbers.push(`${n}학년`);const valid=[...new Set(numbers)].filter(g=>gradeOptions().includes(g));if(!valid.length){$('chat-notice').textContent='해당 학교급의 학년을 선택하거나 숫자로 입력해 주세요. 예: 1, 2학년';return false;}accept(valid);return;}
   if(def.multi){const parts=def.id==='subjects'?text.split(/[,，\n]/).map(s=>s.trim()).filter(Boolean):[text];accept([...new Set([...selected,...parts])]);}else accept(text);
@@ -339,7 +308,6 @@ function fillModels(list){const select=$('model');select.replaceChildren();for(c
 $('model').onchange=()=>{model=$('model').value;toast('모델을 변경했어요.');};
 $('connect-key').onclick=async()=>{if(busy)return;const key=$('api-key').value.trim();if(!key){$('key-status').textContent='API 키를 입력해 주세요.';return;}busy=true;$('connect-key').disabled=true;$('remove-key').disabled=true;render();$('key-status').textContent='연결 확인 중…';try{const list=await listModels(key);if(!list.length)throw new Error('이 키로 사용할 수 있는 Gemini 모델이 없어요.');apiKey=key;fillModels(list);$('api-key').value='';$('key-status').textContent='연결되었습니다. 아래 목록에서 모델을 선택하세요. 키는 새로고침 전까지만 유지됩니다.';updateConnection();}catch(error){$('key-status').textContent=error.message;}finally{busy=false;$('connect-key').disabled=false;$('remove-key').disabled=false;render();}};
 $('remove-key').onclick=()=>{if(busy){toast('진행 중인 요청이 끝난 뒤 삭제해 주세요.');return;}apiKey='';$('model').replaceChildren(new Option('연결 후 선택할 수 있어요','gemini-3.8-flash'));$('model').disabled=true;model='gemini-3.8-flash';$('api-key').value='';$('api-key').type='password';$('toggle-key').textContent='보기';$('key-status').textContent='키를 삭제했습니다.';updateConnection();};
-$('ai-refine').onclick=()=>refine('입력 내용을 바탕으로 구현 가능한 PRD를 정리하고, 목표·화면별 기능·수용 기준·미정 사항을 명확히 작성하세요.');
 $('copy-doc').onclick=async()=>{try{await navigator.clipboard.writeText(markdown());toast('기획서를 복사했어요.');}catch{toast('복사 권한이 없어요. MD 다운로드를 사용해 주세요.');}};
 $('download-doc').onclick=()=>{const url=URL.createObjectURL(new Blob([markdown()],{type:'text/markdown;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Oni-PRD.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 $('edit-doc').onclick=()=>{if(busy)return;if(!editing)state.previousDraft=markdown();editing=!editing;$('prd-preview').hidden=editing;$('document-editor').hidden=!editing;$('edit-doc').textContent=editing?'편집 완료':'직접 편집';if(editing){$('document-editor').value=markdown();$('document-editor').focus();}else renderDocument();};
