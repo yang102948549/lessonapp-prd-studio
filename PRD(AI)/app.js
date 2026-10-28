@@ -308,7 +308,7 @@ function guideCard() {
   if (curEl) return curEl;
   curEl = document.createElement('div'); curEl.className = 'cur-guide';
   const h = document.createElement('h3'); h.textContent = '교육과정에서 수업 고르기';
-  const sub = document.createElement('p'); sub.className = 'cur-sub'; sub.textContent = '낱말을 검색하거나 학년군·교과를 골라 성취기준을 선택하세요. 고른 원문이 기획서의 단원과 주제에 반영돼요.';
+  const sub = document.createElement('p'); sub.className = 'cur-sub'; sub.textContent = '낱말을 검색하거나 학년군·교과를 골라 성취기준을 선택하세요. 고른 원문이 바로 단원과 주제의 답이 돼요.';
   const body = document.createElement('div');
   const act = document.createElement('div'); act.className = 'cur-guide-actions';
   const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'text-button'; skip.textContent = '직접 입력할게요';

@@ -105,10 +105,10 @@ function renderProjects(){renderStorage();
 let curKey='',curHandle=null;
 function renderCurCard(def){const card=$('cur-card');const show=!!(def&&def.id==='idea');card.hidden=!show;if(!show){curKey='';card.replaceChildren();return;}
   if(curKey===def.id)return;curKey=def.id;card.replaceChildren();card.className='cur-guide';
-  const body=mk('div','');card.append(mk('h3','','교육과정에서 수업 고르기'),mk('p','cur-sub','낱말을 검색하거나 학년군·교과를 골라 성취기준을 선택하세요. 고른 원문이 기획서의 단원과 주제에 반영돼요.'),body);
+  const body=mk('div','');card.append(mk('h3','','교육과정에서 수업 고르기'),mk('p','cur-sub','낱말을 검색하거나 학년군·교과를 골라 성취기준을 선택하세요. 고른 원문이 바로 단원과 주제의 답이 돼요.'),body);
   const a=state.answers;
-  curHandle=Curriculum.mount(body,{school:a.school,grades:a.grades,subjects:Array.isArray(a.subjects)?a.subjects:[a.subjects].filter(Boolean),applyLabel:'입력란에 넣기',
-    onApply:r=>{const box=$('chat-input');box.value=Curriculum.format(r)+'\n\n수업 주제·어려워하는 부분: ';box.focus();curHandle.reset();toast('성취기준을 입력란에 넣었어요. 주제를 덧붙여 보내 주세요.');}});}
+  curHandle=Curriculum.mount(body,{school:a.school,grades:a.grades,subjects:Array.isArray(a.subjects)?a.subjects:[a.subjects].filter(Boolean),applyLabel:'이 성취기준으로 답하기',
+    onApply:r=>{if(busy)return;if(processText(Curriculum.format(r))!==false)curHandle.reset();}});}
 function renderStackCard(def){const card=$('stack-card');card.hidden=!(def&&def.id==='stack');if(card.hidden)return;card.replaceChildren();
   const r=Planning.recommend(state.answers);const add=(tag,text,cls)=>{const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;card.append(e);return e;};
   add('h3','추천: '+r.label);add('div',r.one);
