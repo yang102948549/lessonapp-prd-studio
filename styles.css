@@ -206,10 +206,26 @@
 #modal input{width:100%;margin-top:6px;font-size:16px}
 #modal .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 #modal .modal-actions button{font-size:14px;padding:8px 16px}
-/* 교육과정 성취기준 선택기 */
-.cur-card{margin:0 0 14px}.cur-body{margin-top:10px;border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--side)}
-.cur-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:8px}
-.cur-field{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}.cur-field select,.cur-field input{width:100%;min-width:0;padding:7px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font-size:14px}
-.cur-list{margin:8px 0;max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg)}
-.cur-item{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-bottom:1px solid var(--border);font-size:14px;line-height:1.6;cursor:pointer}.cur-item:last-child{border-bottom:0}.cur-item:hover{background:var(--surface)}.cur-item input{margin-top:5px;flex:none}.cur-text small{color:var(--muted)}
-.cur-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}.cur-count{font-size:13px;color:var(--muted)}.cur-note{margin:6px 0 0;font-size:12px;color:var(--muted)}
+/* 교육과정 성취기준 선택기 (핵심 기능) */
+.cur-guide{margin:0 0 20px;border:1px solid var(--border);border-radius:14px;padding:18px 18px 14px;background:var(--side)}
+.cur-guide h3{margin:0 0 4px;font-size:18px;line-height:1.4;font-weight:650}
+.cur-guide .cur-sub{margin:0 0 14px;font-size:14.5px;line-height:1.65;color:var(--muted)}
+.cur-guide-actions{display:flex;justify-content:flex-end;margin-top:6px}.cur-guide-actions button{font-size:14px}
+.cur-picker{font-size:15px;color:var(--fg)}
+.cur-search input.cur-q{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--fg);-webkit-text-fill-color:var(--fg);font-size:16px}
+.cur-search input.cur-q::placeholder{color:var(--muted);-webkit-text-fill-color:var(--muted);opacity:1}
+.cur-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0 0}
+.cur-field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);min-width:0}
+.cur-field select{width:100%;min-width:0;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font-size:15px}.cur-field select:disabled{opacity:.5}
+.cur-list{margin:12px 0;max-height:min(360px,48dvh);overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+.cur-item{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;border:0;border-bottom:1px solid var(--border);border-radius:0;padding:11px 12px;background:transparent;font-size:15px;line-height:1.65;color:var(--fg)}
+.cur-item:last-child{border-bottom:0}.cur-item:hover,.cur-item.on{background:var(--surface)}
+.cur-mark{flex:none;width:19px;height:19px;margin-top:3px;border:1.5px solid var(--muted);border-radius:5px;display:grid;place-items:center;font-size:13px;line-height:1}
+.cur-item.on .cur-mark{background:var(--accent);border-color:var(--accent);color:var(--inverse)}
+.cur-text{min-width:0}.cur-text b{font-weight:650}.cur-text small{display:block;margin-top:2px;color:var(--muted);font-size:13px;line-height:1.5}
+.cur-hint{margin:0;padding:16px 14px;color:var(--muted);font-size:14px}
+.cur-more{display:block;width:100%;border:0;border-radius:0;padding:12px;font-size:14px;color:var(--muted)}
+.cur-tray{display:flex;flex-wrap:wrap;margin:0 0 6px}
+.cur-chip{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--border);border-radius:999px;padding:2px 4px 2px 12px;margin:0 6px 6px 0;font-size:13.5px;background:var(--surface)}.cur-chip button{border:0;padding:0 8px;background:transparent;font-size:16px;line-height:1.4}
+.cur-foot{display:flex;align-items:center;justify-content:space-between;gap:10px}.cur-count{font-size:14px;color:var(--muted)}.cur-foot button.primary{font-size:15px;padding:10px 16px}
+.cur-open{margin:0 0 6px}

@@ -56,7 +56,7 @@ for c in sec:
     for d, items in domains.items():
         rows.append([band, '제2외국어', c['subjectKorean'], d, items]); added += len(items)
 
-data = {'source': '교육부 고시 제2022-33호·국가교육위원회 고시 제2024-3호 (2022 개정 교육과정) · jalnanco/korea-learning-map, raphysicst-create/korean-secondary-learning-map-mcp', 'units': rows}
+data = {'source': '교육부 고시 제2022-33호 · 국가교육위원회 고시 제2024-3호 (2022 개정 교육과정)', 'units': rows}
 with open(out_p, 'w', encoding='utf8') as f:
     f.write('/* 자동 생성: tools/build-curriculum.py. units = [학년군, 교과, 과목, 단원(영역), [[성취기준 코드, 원문], ...]] */\n')
     f.write('globalThis.CurriculumData=' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';\n')

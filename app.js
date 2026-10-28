@@ -100,16 +100,14 @@ function renderProjects(){renderStorage();
     row.append(open,edit,del);list.append(row);});
   $('project-title').textContent=currentProject().name;
 }
-/* 단원과 주제 단계: 2022 개정 교육과정 성취기준에서 골라 입력란에 채운다 */
-let curKey='';
+/* 단원과 주제 단계: PRD(AI)와 같은 성취기준 검색 카드. 고른 원문을 입력란에 채운다 */
+let curKey='',curHandle=null;
 function renderCurCard(def){const card=$('cur-card');const show=!!(def&&def.id==='idea');card.hidden=!show;if(!show){curKey='';card.replaceChildren();return;}
-  if(curKey===def.id)return;curKey=def.id;card.replaceChildren();
-  const open=mk('button','text-button','교육과정 성취기준에서 고르기');open.type='button';open.setAttribute('aria-expanded','false');
-  const body=mk('div','cur-body');body.hidden=true;
-  open.onclick=()=>{body.hidden=!body.hidden;open.setAttribute('aria-expanded',String(!body.hidden));if(body.hidden||body.childNodes.length)return;
-    const a=state.answers;Curriculum.mount(body,{school:a.school,grades:a.grades,subjects:Array.isArray(a.subjects)?a.subjects:[a.subjects].filter(Boolean),submitLabel:'입력란에 넣기',
-      onApply:r=>{const box=$('chat-input');box.value=Curriculum.format(r)+'\n\n수업 주제·어려워하는 부분: ';box.focus();body.hidden=true;open.setAttribute('aria-expanded','false');toast('성취기준을 입력란에 넣었어요. 주제를 덧붙여 보내 주세요.');}});};
-  card.append(open,body);}
+  if(curKey===def.id)return;curKey=def.id;card.replaceChildren();card.className='cur-guide';
+  const body=mk('div','');card.append(mk('h3','','교육과정에서 수업 고르기'),mk('p','cur-sub','낱말을 검색하거나 학년군·교과를 골라 성취기준을 선택하세요. 고른 원문이 기획서의 단원과 주제에 반영돼요.'),body);
+  const a=state.answers;
+  curHandle=Curriculum.mount(body,{school:a.school,grades:a.grades,subjects:Array.isArray(a.subjects)?a.subjects:[a.subjects].filter(Boolean),applyLabel:'입력란에 넣기',
+    onApply:r=>{const box=$('chat-input');box.value=Curriculum.format(r)+'\n\n수업 주제·어려워하는 부분: ';box.focus();curHandle.reset();toast('성취기준을 입력란에 넣었어요. 주제를 덧붙여 보내 주세요.');}});}
 function renderStackCard(def){const card=$('stack-card');card.hidden=!(def&&def.id==='stack');if(card.hidden)return;card.replaceChildren();
   const r=Planning.recommend(state.answers);const add=(tag,text,cls)=>{const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;card.append(e);return e;};
   add('h3','추천: '+r.label);add('div',r.one);

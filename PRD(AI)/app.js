@@ -84,10 +84,13 @@ function renderMessages() {
   const add = (role, build) => { const m = document.createElement('div'); m.className = 'message ' + role; if (role === 'assistant') { const w = document.createElement('div'); w.className = 'who'; w.textContent = '✳ 수업 웹앱 개발 도우미'; m.append(w); } build(m); root.append(m); return m; };
   add('assistant', m => m.append(renderMd(Prompt.welcome.text)));
   state.messages.forEach(msg => add(msg.role, m => { if (msg.role === 'user') m.append(document.createTextNode(msg.text)); else if (msg.error) { const e = document.createElement('div'); e.className = 'error-msg'; e.textContent = msg.text; m.append(e); } else m.append(renderMd(msg.text)); }));
+  if (guideActive()) root.append(guideCard());
   if (busy) add('assistant', m => { const t = document.createElement('span'); t.className = 'typing'; t.setAttribute('aria-label', '답변을 생각하고 있어요'); t.innerHTML = '<i></i><i></i><i></i>'; m.append(t); });
 }
 function renderChips() {
   const root = $('chips'); root.replaceChildren();
+  $('cur-open').hidden = guideActive();
+  if (guideActive()) return;
   if (busy) { for (let i = 0; i < 3; i++) { const s = document.createElement('span'); s.className = 'chip skeleton'; root.append(s); } return; }
   state.chips.forEach(text => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = text; b.title = '입력창에 담기'; b.onclick = () => useChip(text); root.append(b); });
 }
@@ -251,7 +254,7 @@ function applyReply(json) {
   (Array.isArray(json.updates) ? json.updates : []).forEach(u => { const id = String(u.id || ''), md = String(u.markdown || '').trim(); if (known.has(id) && md && md !== sectionBody(id)) { state.doc[id] = redact(md); changed.push(id); } });
   state.messages.push({role:'assistant', text:redact(reply)});
   state.chips = (Array.isArray(json.chips) ? json.chips : []).map(c => redact(String(c).trim())).filter(Boolean).slice(0, 5);
-  state.ready = !!json.ready; state.focus = sectionById(String(json.focus || '')) ? String(json.focus) : '';
+  state.ready = !!json.ready; state.focus = sectionById(String(json.focus || '')) ? String(json.focus) : ''; curDismissed = false;
   const title = String(json.title || '').trim().slice(0, 40);
   if (title && /^(나의 수업 웹앱|새 프로젝트 ?\d*)$/.test(currentProject().name)) currentProject().name = title;
   return changed;
@@ -277,18 +280,26 @@ function send(text) {
   if (!apiKey) { needKey('대화를 시작하려면 Gemini API 키를 연결해 주세요. 아래 안내를 따라 발급받을 수 있어요.'); return false; }
   state.messages.push({role:'user', text:redact(text)}); state.chips = []; persist(); askAI(); return true;
 }
-/* 교육과정 성취기준 선택: 고른 원문을 입력란에 채워 교사가 보내면 AI가 A-2·학습 목표에 반영한다 */
-$('cur-open').onclick = () => {
-  const d = $('cur-modal'); d.showModal();
-  if ($('cur-body').childNodes.length) return;
-  Curriculum.mount($('cur-body'), {base: '../', submitLabel: '입력란에 넣기', onApply: r => {
-    const box = $('chat-input'); box.value = `수업 교육과정은 아래 성취기준이에요. 사용 수업과 학습 목표에 반영해 주세요.
-${Curriculum.format(r)}
-`;
-    d.close(); box.focus(); toast('성취기준을 입력란에 넣었어요. 보내면 기획서에 반영돼요.');
+/* 교육과정 성취기준 안내: AI가 학년·교과를 물을 차례(처음 포함)에는 칩 대신 채팅 안에서 성취기준을 검색해 고른다 */
+let curEl = null, curHandle = null, curDismissed = false, curForced = false;
+const guideActive = () => !busy && !curDismissed && (curForced || state.focus === 'context' || !state.messages.length);
+function guideCard() {
+  if (curEl) return curEl;
+  curEl = document.createElement('div'); curEl.className = 'cur-guide';
+  const h = document.createElement('h3'); h.textContent = '교육과정에서 수업 고르기';
+  const sub = document.createElement('p'); sub.className = 'cur-sub'; sub.textContent = '낱말을 검색하거나 학년군·교과를 골라 성취기준을 선택하세요. 고른 원문이 기획서의 사용 수업과 학습 목표에 반영돼요.';
+  const body = document.createElement('div');
+  const act = document.createElement('div'); act.className = 'cur-guide-actions';
+  const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'text-button'; skip.textContent = '직접 입력할게요';
+  skip.onclick = () => { curDismissed = true; curForced = false; render(); };
+  act.append(skip); curEl.append(h, sub, body, act);
+  curHandle = Curriculum.mount(body, {base: '../', applyLabel: '이 성취기준으로 이야기하기', onApply: r => {
+    if (send(`수업 교육과정은 아래 성취기준이에요. 사용 수업과 학습 목표에 반영해 주세요.
+${Curriculum.format(r)}`)) { curHandle.reset(); curForced = false; }
   }});
-};
-$('cur-close').onclick = () => $('cur-modal').close();
+  return curEl;
+}
+$('cur-open').onclick = () => { curForced = true; curDismissed = false; render(); scrollChat(); };
 $('composer').onsubmit = e => { e.preventDefault(); if (send($('chat-input').value)) $('chat-input').value = ''; };
 $('chat-input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('composer').requestSubmit(); } };
 
@@ -298,7 +309,7 @@ function download(blob, name) { const url = URL.createObjectURL(blob), a = docum
 $('download-doc').onclick = () => download(new Blob([docText()], {type:'text/markdown;charset=utf-8'}), (currentProject().name.replace(/[\\/:*?"<>|]/g, '') || 'PRD') + '-PRD.md');
 
 /* ---------- 프로젝트 ---------- */
-function resetView() { editingId = ''; mapSel = ''; mapSeen = ''; $('chat-input').value = ''; $('chat-notice').textContent = ''; $('detail-panel').classList.remove('mobile-open'); }
+function resetView() { editingId = ''; curDismissed = false; curForced = false; if (curHandle) curHandle.reset(); mapSel = ''; mapSeen = ''; $('chat-input').value = ''; $('chat-notice').textContent = ''; $('detail-panel').classList.remove('mobile-open'); }
 function switchProject(id) { if (busy || id === currentId) return; persist(); currentId = id; state = loadState(currentProject().state); resetView(); persist(); render(); scrollChat(); }
 function newProject() {
   if (busy) return; if (projects.length >= MAX_PROJECTS) { toast(`프로젝트는 최대 ${MAX_PROJECTS}개까지 저장할 수 있어요.`); return; }

@@ -5,7 +5,7 @@
   <meta name="description" content="대화하며 만드는 수업 웹앱 PRD">
   <meta name="referrer" content="no-referrer">
   <title>Oni Studio</title>
-  <link rel="stylesheet" href="styles.css?v=13"><script defer src="prompt.js?v=11"></script><script defer src="../curriculum.js?v=2"></script><script defer src="app.js?v=11"></script>
+  <link rel="stylesheet" href="styles.css?v=15"><script defer src="prompt.js?v=13"></script><script defer src="../curriculum.js?v=4"></script><script defer src="app.js?v=13"></script>
 </head>
 <body>
 <aside class="sidebar">
@@ -21,7 +21,7 @@
     <section class="chat-panel" aria-label="수업 웹앱 개발 도우미와 대화">
       <div class="chat-scroll" id="chat-scroll"><div class="conversation"><div id="messages" role="log" aria-live="polite"></div></div></div>
       <div class="composer-area">
-        <button id="cur-open" class="text-button cur-open" type="button">교육과정 성취기준에서 고르기</button>
+        <button id="cur-open" class="text-button cur-open" type="button">교육과정에서 성취기준 고르기</button>
         <div id="chips" class="chips" aria-label="추천 답변"></div>
         <div id="chat-notice" role="status"></div>
         <form id="composer" class="composer">
@@ -53,6 +53,5 @@
   </div>
 </main>
 <dialog id="modal" aria-labelledby="modal-title"><div class="modal-body"><h2 id="modal-title"></h2><p id="modal-msg" hidden></p><input id="modal-input" type="text" maxlength="40" autocomplete="off" hidden><div class="modal-actions"><button id="modal-cancel" type="button">취소</button><button id="modal-ok" type="button" class="primary">확인</button></div></div></dialog>
-<dialog id="cur-modal" aria-labelledby="cur-title"><div class="cur-wrap"><h2 id="cur-title">교육과정에서 단원·성취기준 고르기</h2><p class="cur-sub">2022 개정 교육과정 원문이에요. 고른 내용은 입력란에 들어가고, 보내면 기획서의 ‘사용 수업’에 반영돼요.</p><div id="cur-body"></div><div class="modal-actions"><button id="cur-close" type="button">닫기</button></div></div></dialog>
 <div id="toast" role="status"></div>
 </body></html>

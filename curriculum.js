@@ -7,7 +7,7 @@ globalThis.Curriculum = (() => {
     if (loading) return loading;
     loading = new Promise((resolve, reject) => {
       const s = document.createElement('script');
-      s.src = base + 'curriculum-data.js?v=2';
+      s.src = base + 'curriculum-data.js?v=3';
       s.onload = () => resolve();
       s.onerror = () => { loading = null; s.remove(); reject(new Error('교육과정 데이터를 불러오지 못했어요.')); };
       document.head.append(s);
@@ -15,12 +15,16 @@ globalThis.Curriculum = (() => {
     return loading;
   }
 
-  /* 학교급·학년(예: 초등학교, ['5학년','6학년']) → 해당 학년군 이름. 학년이 없으면 학교급 전체 */
+  const ORDER = ['초1~2', '초3~4', '초5~6', '중1~3', '고1', '고2~3'];
+  const LEVEL = {'초': '초등학교', '중': '중학교', '고': '고등학교'};
+  const uniq = a => [...new Set(a)];
+  const allBands = () => { const have = uniq(rows().map(r => r[0])); return ORDER.filter(b => have.includes(b)).concat(have.filter(b => !ORDER.includes(b))); };
+
+  /* 학교급·학년(예: 초등학교, ['5학년','6학년']) → 해당 학년군 이름. 학년이 없으면 학교급 전체, 학교급이 없으면 전체 */
   function bandsFor(school, grades) {
     const nums = (Array.isArray(grades) ? grades : [grades]).map(g => parseInt(g, 10)).filter(Boolean);
-    const all = [...new Set(rows().map(r => r[0]))];
-    const head = /^초/.test(school) ? '초' : /^중/.test(school) ? '중' : /^고/.test(school) ? '고' : '';
-    const pool = all.filter(b => !head || b.startsWith(head));
+    const head = /^초/.test(school || '') ? '초' : /^중/.test(school || '') ? '중' : /^고/.test(school || '') ? '고' : '';
+    const pool = allBands().filter(b => !head || b.startsWith(head));
     if (!nums.length || !head) return pool;
     const fit = pool.filter(b => {
       const m = b.match(/(\d)(?:~(\d))?$/);
@@ -40,75 +44,114 @@ globalThis.Curriculum = (() => {
     for (const n of names || []) { const k = SUBJECT_ALIAS[n] || n; const hit = list.find(s => s === k || s.startsWith(k)); if (hit) return hit; }
     return '';
   };
-  const uniq = a => [...new Set(a)];
-  const inBands = bands => rows().filter(r => bands.includes(r[0]));
+  const subjectsIn = bands => uniq(rows().filter(r => bands.includes(r[0])).map(r => r[1]));
 
-  /* opts: {school, grades, subjects, onApply(result), submitLabel}. 선택 결과가 바뀔 때마다 result는 onChange로도 알린다 */
+  /* 검색: 낱말은 공백으로 나누어 모두 포함해야 한다. 원문뿐 아니라 학교급·학년군·교과·과목·단원·코드도 대상이라 "고등학교 독일어"도 찾는다 */
+  function search({bands, subject = '', unitKey = '', query = '', limit = 60} = {}) {
+    const words = String(query).trim().split(/\s+/).filter(Boolean);
+    const out = []; let total = 0;
+    for (const r of rows()) {
+      if (bands && bands.length && !bands.includes(r[0])) continue;
+      if (subject && r[1] !== subject) continue;
+      if (unitKey && `${r[2]}\u0001${r[3]}` !== unitKey) continue;
+      const head = `${LEVEL[r[0][0]] || ''} ${r[0]} ${r[1]} ${r[2]} ${r[3]}`;
+      for (const [id, text] of r[4]) {
+        if (words.length) { const hay = `${head} ${id} ${text}`; if (!words.every(w => hay.includes(w))) continue; }
+        total++;
+        if (out.length < limit) out.push({id, text, band: r[0], subject: r[1], course: r[2], unit: r[3]});
+      }
+    }
+    return {total, items: out};
+  }
+
+  /* opts: {school, grades, subjects, base, applyLabel, onApply(result)}. 돌려주는 값: {ready, reset()} */
   function mount(root, opts = {}) {
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-    const field = (label, ...nodes) => { const w = el('label', 'cur-field'); w.append(el('span', '', label), ...nodes); return w; };
-    const select = () => { const s = document.createElement('select'); return s; };
-    const fill = (s, items, first, keep) => { s.replaceChildren(); if (first) s.append(new Option(first, '')); items.forEach(i => s.append(new Option(i, i))); if (keep && items.includes(keep)) s.value = keep; };
+    const field = (label, node) => { const w = el('label', 'cur-field'); w.append(el('span', '', label), node); return w; };
+    const fill = (s, items, first, keep) => {
+      s.replaceChildren();
+      if (first) s.append(new Option(first, ''));
+      items.forEach(i => s.append(new Option(Array.isArray(i) ? i[1] : i, Array.isArray(i) ? i[0] : i)));
+      if (keep != null && [...s.options].some(o => o.value === keep)) s.value = keep;
+    };
+    const handle = {ready: null, reset() {}};
 
     root.replaceChildren();
     root.classList.add('cur-picker');
     const status = el('p', 'cur-note', '교육과정 데이터를 불러오는 중…');
     root.append(status);
 
-    return load(opts.base || '').then(() => {
+    handle.ready = load(opts.base || '').then(() => {
       const bands = bandsFor(opts.school || '', opts.grades || []);
-      const pool = inBands(bands);
-      if (!pool.length) { status.textContent = '선택한 학교급·학년의 교육과정 데이터가 없어요.'; return; }
-      const sBand = select(), sSubject = select(), sCourse = select(), sUnit = select();
-      const search = document.createElement('input'); search.type = 'search'; search.placeholder = '성취기준 안에서 검색 (예: 분수, 토론)'; search.setAttribute('aria-label', '성취기준 검색');
-      const list = el('div', 'cur-list'); list.setAttribute('role', 'group'); list.setAttribute('aria-label', '성취기준');
-      const foot = el('div', 'cur-foot'), count = el('span', 'cur-count'), apply = el('button', 'primary', opts.submitLabel || '선택한 내용 사용하기'); apply.type = 'button';
+      const sBand = document.createElement('select'), sSubject = document.createElement('select'), sUnit = document.createElement('select');
+      const q = document.createElement('input');
+      q.type = 'text'; q.className = 'cur-q'; q.placeholder = '낱말로 검색 (예: 분수, 토론, 독일어, 광합성)'; q.autocomplete = 'off'; q.spellcheck = false; q.setAttribute('aria-label', '성취기준 검색');
+      const list = el('div', 'cur-list'); list.setAttribute('role', 'group'); list.setAttribute('aria-label', '검색 결과');
+      const tray = el('div', 'cur-tray'), foot = el('div', 'cur-foot'), count = el('span', 'cur-count');
+      const apply = el('button', 'primary', opts.applyLabel || '이 성취기준으로 시작'); apply.type = 'button';
       foot.append(count, apply);
-      const src = el('p', 'cur-note', `출처: ${globalThis.CurriculumData.source}`);
       const top = el('div', 'cur-row');
-      if (bands.length > 1) top.append(field('학년군', sBand));
-      top.append(field('교과', sSubject), field('과목', sCourse), field('단원(영역)', sUnit));
-      root.replaceChildren(top, field('검색', search), list, foot, src);
+      top.append(field('학년군', sBand), field('교과', sSubject), field('단원(영역)', sUnit));
+      const search1 = el('div', 'cur-search'); search1.append(q);
+      root.replaceChildren(search1, top, list, tray, foot, el('p', 'cur-note', `출처: ${globalThis.CurriculumData.source}`));
 
-      const picked = new Map(); // 코드 → 원문
-      const scope = () => pool.filter(r => r[0] === sBand.value);
-      fill(sBand, bands);
-      const reload = (level) => {
-        const inBand = scope();
-        if (level <= 0) { const subs = uniq(inBand.map(r => r[1])); fill(sSubject, subs, null, sSubject.value || guessSubject(subs, opts.subjects)); }
-        const bySub = inBand.filter(r => r[1] === sSubject.value);
-        if (level <= 1) { const cs = uniq(bySub.map(r => r[2])); fill(sCourse, cs, cs.length > 1 ? '전체 과목' : null, sCourse.value); }
-        const byCourse = bySub.filter(r => !sCourse.value || r[2] === sCourse.value);
-        if (level <= 2) { const us = uniq(byCourse.map(r => r[3])); fill(sUnit, us, '전체 단원', sUnit.value); }
-        const byUnit = byCourse.filter(r => !sUnit.value || r[3] === sUnit.value);
-        paint(byUnit);
+      const picked = new Map(); // `${코드}|${과목}` → 성취기준
+      let limit = 60;
+      const bandsNow = () => (sBand.value ? [sBand.value] : bands);
+      const syncSubjects = () => {
+        const subs = subjectsIn(bandsNow());
+        fill(sSubject, subs, '전체 교과', subs.includes(sSubject.value) ? sSubject.value : guessSubject(subs, opts.subjects));
       };
-      const paint = units => {
-        const q = search.value.trim();
+      const syncUnits = () => {
+        const seen = new Map();
+        rows().filter(r => bandsNow().includes(r[0]) && r[1] === sSubject.value).forEach(r => seen.set(`${r[2]}\u0001${r[3]}`, r[2] !== r[1] ? `${r[2]} · ${r[3]}` : r[3]));
+        fill(sUnit, [...seen], '전체 단원', sUnit.value);
+        sUnit.disabled = !sSubject.value;
+      };
+      const paintTray = () => {
+        tray.replaceChildren();
+        picked.forEach((s, key) => {
+          const chip = el('span', 'cur-chip'); chip.title = s.text;
+          const x = el('button', '', '×'); x.type = 'button'; x.setAttribute('aria-label', `${s.id} 선택 취소`);
+          x.onclick = () => { picked.delete(key); paint(); };
+          chip.append(el('b', '', s.id), x); tray.append(chip);
+        });
+        tray.hidden = !picked.size;
+        count.textContent = picked.size ? `${picked.size}개 선택` : '성취기준을 눌러 고르세요';
+        apply.disabled = !picked.size;
+      };
+      const paint = () => {
         list.replaceChildren();
-        let n = 0;
-        units.forEach(r => r[4].forEach(([id, text]) => {
-          if (q && !text.includes(q) && !id.includes(q)) return;
-          n++;
-          const row = el('label', 'cur-item'), cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = picked.has(id);
-          cb.onchange = () => { cb.checked ? picked.set(id, { id, text, band: r[0], subject: r[1], course: r[2], unit: r[3] }) : picked.delete(id); sync(); };
-          const body = el('span', 'cur-text'); body.append(el('b', '', `[${id}] `), document.createTextNode(text));
-          if (!sUnit.value || !sCourse.value) body.append(el('small', '', ` ${r[2] !== r[1] ? r[2] + ' · ' : ''}${r[3]}`));
-          row.append(cb, body); list.append(row);
-        }));
-        if (!n) list.append(el('p', 'cur-note', q ? '검색 결과가 없어요.' : '이 범위에 성취기준이 없어요.'));
-        sync();
+        if (!(q.value.trim() || sSubject.value || sBand.value)) { list.append(el('p', 'cur-hint', '낱말을 검색하거나 학년군·교과를 고르면 성취기준이 나와요.')); paintTray(); return; }
+        const r = search({bands: bandsNow(), subject: sSubject.value, unitKey: sUnit.value, query: q.value, limit});
+        r.items.forEach(s => {
+          const key = `${s.id}|${s.course}`, on = picked.has(key);
+          const row = el('button', 'cur-item' + (on ? ' on' : '')); row.type = 'button'; row.setAttribute('aria-pressed', String(on));
+          const body = el('span', 'cur-text');
+          body.append(el('b', '', s.id), document.createTextNode(' ' + s.text), el('small', '', `${s.band} · ${s.subject}${s.course !== s.subject ? ' · ' + s.course : ''} · ${s.unit}`));
+          row.append(el('span', 'cur-mark', on ? '✓' : ''), body);
+          row.onclick = () => { on ? picked.delete(key) : picked.set(key, s); paint(); };
+          list.append(row);
+        });
+        if (!r.total) list.append(el('p', 'cur-hint', '검색 결과가 없어요. 낱말을 줄이거나 필터를 풀어 보세요.'));
+        else if (r.total > r.items.length) {
+          const more = el('button', 'cur-more', `결과 ${r.total}개 중 ${r.items.length}개 · 더 보기`); more.type = 'button';
+          more.onclick = () => { limit += 60; paint(); }; list.append(more);
+        }
+        paintTray();
       };
-      const sync = () => { count.textContent = picked.size ? `성취기준 ${picked.size}개 선택` : '성취기준을 골라 주세요'; apply.disabled = !picked.size; };
-      sBand.onchange = () => { sSubject.value = ''; sCourse.value = ''; sUnit.value = ''; reload(0); };
-      sSubject.onchange = () => { sCourse.value = ''; sUnit.value = ''; reload(1); };
-      sCourse.onchange = () => { sUnit.value = ''; reload(2); };
-      sUnit.onchange = () => reload(3);
-      search.oninput = () => reload(3);
-      apply.onclick = () => opts.onApply && opts.onApply(result());
-      const result = () => ({ standards: [...picked.values()] });
-      reload(0);
+      const refilter = () => { limit = 60; paint(); };
+      fill(sBand, bands.map(b => [b, b]), bands.length > 1 ? '전체 학년군' : null, bands.length === 1 ? bands[0] : '');
+      syncSubjects(); syncUnits(); paint();
+      sBand.onchange = () => { syncSubjects(); syncUnits(); refilter(); };
+      sSubject.onchange = () => { sUnit.value = ''; syncUnits(); refilter(); };
+      sUnit.onchange = refilter;
+      q.oninput = refilter;
+      q.onkeydown = e => { if (e.key === 'Enter') e.preventDefault(); };
+      apply.onclick = () => opts.onApply && opts.onApply({standards: [...picked.values()]});
+      handle.reset = () => { picked.clear(); q.value = ''; limit = 60; paint(); };
     }).catch(e => { status.textContent = e.message; });
+    return handle;
   }
 
   /* 선택 결과 → 문장. 같은 교과·과목·단원끼리 묶어 성취기준 원문을 그대로 싣는다 */
@@ -116,14 +159,14 @@ globalThis.Curriculum = (() => {
     const groups = new Map();
     result.standards.forEach(s => {
       const key = [s.band, s.subject, s.course, s.unit].join('\u0001');
-      if (!groups.has(key)) groups.set(key, { s, items: [] });
+      if (!groups.has(key)) groups.set(key, {s, items: []});
       groups.get(key).items.push(s);
     });
-    return [...groups.values()].map(({ s, items }) => {
+    return [...groups.values()].map(({s, items}) => {
       const where = [s.band, s.subject, s.course !== s.subject ? s.course : '', s.unit].filter(Boolean).join(' · ');
       return `${where}\n${items.map(i => `- [${i.id}] ${i.text}`).join('\n')}`;
     }).join('\n');
   }
 
-  return { load, mount, format, bandsFor };
+  return {load, mount, format, bandsFor, search};
 })();
