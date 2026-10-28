@@ -118,3 +118,4 @@ main{flex:1;min-width:0;display:flex;flex-direction:column}
 .cur-chip{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--border);border-radius:999px;padding:2px 4px 2px 12px;margin:0 6px 6px 0;font-size:13.5px;background:var(--surface)}.cur-chip button{border:0;padding:0 8px;background:transparent;font-size:16px;line-height:1.4}
 .cur-foot{display:flex;align-items:center;justify-content:space-between;gap:10px}.cur-count{font-size:14px;color:var(--muted)}.cur-foot button.primary{font-size:15px;padding:10px 16px}
 .cur-open{margin:0 0 6px}
+.topbar>div:first-child{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}#save-status,.top-actions{white-space:nowrap;flex-shrink:0}
