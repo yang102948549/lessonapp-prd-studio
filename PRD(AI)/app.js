@@ -277,6 +277,18 @@ function send(text) {
   if (!apiKey) { needKey('대화를 시작하려면 Gemini API 키를 연결해 주세요. 아래 안내를 따라 발급받을 수 있어요.'); return false; }
   state.messages.push({role:'user', text:redact(text)}); state.chips = []; persist(); askAI(); return true;
 }
+/* 교육과정 성취기준 선택: 고른 원문을 입력란에 채워 교사가 보내면 AI가 A-2·학습 목표에 반영한다 */
+$('cur-open').onclick = () => {
+  const d = $('cur-modal'); d.showModal();
+  if ($('cur-body').childNodes.length) return;
+  Curriculum.mount($('cur-body'), {base: '../', submitLabel: '입력란에 넣기', onApply: r => {
+    const box = $('chat-input'); box.value = `수업 교육과정은 아래 성취기준이에요. 사용 수업과 학습 목표에 반영해 주세요.
+${Curriculum.format(r)}
+`;
+    d.close(); box.focus(); toast('성취기준을 입력란에 넣었어요. 보내면 기획서에 반영돼요.');
+  }});
+};
+$('cur-close').onclick = () => $('cur-modal').close();
 $('composer').onsubmit = e => { e.preventDefault(); if (send($('chat-input').value)) $('chat-input').value = ''; };
 $('chat-input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('composer').requestSubmit(); } };
 

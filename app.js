@@ -35,7 +35,7 @@ function splitChoices(text){const m=text.match(/\n*\[선택지\]\s*\n([\s\S]*)$/
 function gradeOptions(){return Array.from({length:state.answers.school==='초등학교'?6:3},(_,i)=>`${i+1}학년`);}
 function answerText(id){const value=state.answers[id];return Array.isArray(value)?value.join(', '):value||'';}
 function sections(){return Planning.sections(state.answers);}
-function outlineMarkdown(){return '# '+currentProject().name+' PRD\n\n> 질문 답변을 정리한 설계 초안입니다. [미정] 항목과 자료 원문을 확인하고 상세 PRD를 생성하세요.\n\n'+sections().map(([title,value],i)=>`## ${i+1}. ${title}\n${value}`).join('\n\n');}
+function outlineMarkdown(){return '# '+currentProject().name+' PRD\n\n> 질문 답변을 정리한 설계 초안입니다. [미정] 항목과 자료 원문을 확인하세요.\n\n'+sections().map(([title,value],i)=>`## ${i+1}. ${title}\n${value}`).join('\n\n');}
 function markdown(){return state.draft||outlineMarkdown();}
 function renderMarkdown(root,text){
   root.replaceChildren();
@@ -100,6 +100,16 @@ function renderProjects(){renderStorage();
     row.append(open,edit,del);list.append(row);});
   $('project-title').textContent=currentProject().name;
 }
+/* 단원과 주제 단계: 2022 개정 교육과정 성취기준에서 골라 입력란에 채운다 */
+let curKey='';
+function renderCurCard(def){const card=$('cur-card');const show=!!(def&&def.id==='idea');card.hidden=!show;if(!show){curKey='';card.replaceChildren();return;}
+  if(curKey===def.id)return;curKey=def.id;card.replaceChildren();
+  const open=mk('button','text-button','교육과정 성취기준에서 고르기');open.type='button';open.setAttribute('aria-expanded','false');
+  const body=mk('div','cur-body');body.hidden=true;
+  open.onclick=()=>{body.hidden=!body.hidden;open.setAttribute('aria-expanded',String(!body.hidden));if(body.hidden||body.childNodes.length)return;
+    const a=state.answers;Curriculum.mount(body,{school:a.school,grades:a.grades,subjects:Array.isArray(a.subjects)?a.subjects:[a.subjects].filter(Boolean),submitLabel:'입력란에 넣기',
+      onApply:r=>{const box=$('chat-input');box.value=Curriculum.format(r)+'\n\n수업 주제·어려워하는 부분: ';box.focus();body.hidden=true;open.setAttribute('aria-expanded','false');toast('성취기준을 입력란에 넣었어요. 주제를 덧붙여 보내 주세요.');}});};
+  card.append(open,body);}
 function renderStackCard(def){const card=$('stack-card');card.hidden=!(def&&def.id==='stack');if(card.hidden)return;card.replaceChildren();
   const r=Planning.recommend(state.answers);const add=(tag,text,cls)=>{const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;card.append(e);return e;};
   add('h3','추천: '+r.label);add('div',r.one);
@@ -192,19 +202,16 @@ function renderChips(def,options){
 function render(){
   renderProjects();
     const messages=$('messages');messages.replaceChildren();let shown=0;state.messages.forEach((m,index)=>{if(m.role==='user'&&m.kind!=='conversation')return;shown++;const div=document.createElement('div');div.className=`message ${m.role==='user'?'user':'assistant'}`;const del=document.createElement('button');del.type='button';del.className='message-delete';del.textContent='삭제';del.setAttribute('aria-label','이 메시지 삭제');del.disabled=busy;del.onclick=()=>{state.messages.splice(index,1);persist();render();};if(m.role!=='user'){const label=document.createElement('span');label.className='message-label';label.textContent='Oni 코치';div.append(label);const {body,choices}=splitChoices(m.text);div.append(renderMd(body));if(choices.length){const row=document.createElement('div');row.className='md-choices';choices.forEach(c=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=c;b.disabled=busy;b.onclick=()=>{$('chat-input').value=c;$('chat-input').focus();$('chat-notice').textContent='선택한 내용을 입력창에 넣었어요. 고쳐 쓴 뒤 전송하면 답변으로 반영됩니다.';};row.append(b);});div.append(row);}}else div.append(document.createTextNode(m.text));div.append(del);messages.append(div);});$('clear-chat').hidden=!shown;$('clear-chat').disabled=busy;
-  $('steps').replaceChildren();
-  Planning.groups.forEach((group,g)=>{const part=Planning.parts.find(p=>p.groups[0]===g);if(part){const pl=document.createElement('div');pl.className='steps-part';pl.textContent=part.title;$('steps').append(pl);}const wrapper=document.createElement('details');wrapper.open=definitions[state.step]?.group===g;const summary=document.createElement('summary');const members=Planning.visibleSteps(state.answers).filter(d=>d.group===g);const gd=members.filter(d=>isAnswered(d.id)).length;summary.textContent=`${g+1}. ${group}  ${gd}/${members.length}${members.length&&gd===members.length?' ✓':''}`;wrapper.append(summary);members.forEach(def=>{const i=definitions.indexOf(def);const button=document.createElement('button');const ans=isAnswered(def.id),skip=ans&&/^미정/.test(answerText(def.id));button.className=[i===state.step?'current':'',ans&&!skip?'done':'',skip?'skip':''].filter(Boolean).join(' ');button.title=skip?'미정으로 남긴 질문':ans?'답변함':'아직 답하지 않음';button.disabled=busy;const dot=document.createElement('span');dot.className='step-dot';dot.textContent=skip?'?':ans?'✓':'';const label=document.createElement('span');label.className='step-label';label.textContent=def.title;button.append(dot,label);button.onclick=()=>goStep(i);wrapper.append(button);});$('steps').append(wrapper);});
   const def=definitions[state.step];$('chips').replaceChildren();$('custom-wrap').hidden=true;
   const visible=Planning.visibleSteps(state.answers);
 
-  $('question').textContent=def?def.question:'이제 구현할 수 있는 상세 PRD로 구체화해요.';
+  $('question').textContent=def?def.question:'모든 질문에 답했어요. 기획서에서 내용을 확인하고 고쳐 보세요.';
   $('question-help').textContent=def?def.help:'자료 원문, 화면별 행동, 이동 조건, 피드백 문구와 완료 기준을 정리합니다. 오른쪽의 빠진 항목과 충돌을 먼저 확인하세요.';
 
   $('chat-input').placeholder=chatMode==='coach'?'예: 이 활동에 어떤 자료가 필요할까요? 두 방식을 비교해 주세요.':def?def.placeholder:'기획서에서 바꾸고 싶은 점을 이야기해 주세요';
   $('continue').hidden=!def?.multi;$('continue').disabled=!selected.size||busy;
   $('skip-step').hidden=!def||state.step<3;$('skip-step').disabled=busy;
   $('ai-suggest').hidden=!def||state.step<3;$('ai-suggest').disabled=busy;
-  $('generate-final').hidden=!!def;$('generate-final').disabled=busy;
   $('selection-note').textContent=def?.multi?'여러 개 선택 가능 · 직접 입력한 내용도 함께 반영해요':'칩은 답변의 출발점이에요. 선택 후 다음 질문에서 구체화합니다.';
   $('previous-answer').hidden=!def||!answerText(def.id);$('clear-answer').hidden=!def||!answerText(def.id);$('clear-answer').disabled=busy;$('previous-answer').textContent=def&&answerText(def.id)?`이전에 정한 내용: ${answerText(def.id)}`:'';
   let options=def?.id==='grades'?gradeOptions():Planning.options(def?.id,state.answers);if(def?.id==='subjects')options=[...options,...state.extraSubjects];
@@ -212,7 +219,7 @@ function render(){
   $('chat-notice').classList.toggle('progress',busy);$('send').disabled=busy;$('ai-refine').disabled=busy;$('new-chat').disabled=busy;
   $('chat-input').disabled=busy;$('edit-doc').disabled=busy;
   $('cancel-edit').hidden=!def||!isAnswered(def.id)||firstUnanswered()===state.step;$('cancel-edit').disabled=busy;
-  renderStackCard(def);renderMap();renderUsage();
+  renderStackCard(def);renderCurCard(def);renderMap();renderUsage();
   renderDocument();
 }
 function applyAnswer(def,value){
@@ -345,7 +352,6 @@ render();
 
 $('skip-step').onclick=()=>accept('미정 · 추가 구체화 필요');
 $('ai-suggest').onclick=()=>coach($('chat-input').value.trim()||'지금 질문에 대한 구체적인 답변을 제안해 주세요.',true);
-$('generate-final').onclick=()=>refine('확정 답변을 바탕으로 개발 가능한 상세 PRD 초안을 작성하세요. 부족한 콘텐츠는 제안으로 구분하여 실제 원문과 규칙까지 작성하세요.');
 $('ask-ai').onclick=async()=>{if(busy)return;const text=$('chat-input').value.trim();if(!text){$('chat-notice').textContent='AI에게 물어볼 내용을 입력창에 적어 주세요.';$('chat-input').focus();return;}$('chat-notice').textContent='';if(/AIza[\w-]{20,}/.test(text)||(apiKey&&text.includes(apiKey))){$('chat-input').value='';keySettings();$('key-status').textContent='API 키는 대화가 아닌 이 입력란에 넣어 주세요.';return;}if(await coach(text))$('chat-input').value='';};
 $('clear-chat').onclick=()=>{if(busy)return;state.messages=[];persist();render();toast('대화를 지웠어요. 기획 답변은 그대로 유지돼요.');};
 $('restore-draft').onclick=()=>{if(busy)return;const current=markdown();state.draft=state.previousDraft;state.previousDraft=current;state.draftStale=true;persist();render();toast('이전 문서를 복원했어요. 최신 답변과 맞는지 확인해 주세요.');};

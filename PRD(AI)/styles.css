@@ -95,3 +95,11 @@ main{flex:1;min-width:0;display:flex;flex-direction:column}
 .topbar>div:first-child{display:flex;align-items:center;min-width:0}.title-button{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.top-actions{flex-shrink:0}.breadcrumb{white-space:nowrap}
 .chat-panel .md table{font-size:13px}
 @media(max-width:1150px){.keyboard-hint{display:none}.composer-bottom>div{flex-shrink:0}.conversation{padding-inline:20px}}
+/* 교육과정 성취기준 선택기 */
+.cur-card{margin:0 0 14px}.cur-body{margin-top:10px;border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--side)}
+.cur-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:8px}
+.cur-field{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}.cur-field select,.cur-field input{width:100%;min-width:0;padding:7px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font-size:14px}
+.cur-list{margin:8px 0;max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg)}
+.cur-item{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-bottom:1px solid var(--border);font-size:14px;line-height:1.6;cursor:pointer}.cur-item:last-child{border-bottom:0}.cur-item:hover{background:var(--surface)}.cur-item input{margin-top:5px;flex:none}.cur-text small{color:var(--muted)}
+.cur-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}.cur-count{font-size:13px;color:var(--muted)}.cur-note{margin:6px 0 0;font-size:12px;color:var(--muted)}
+#cur-modal{width:min(720px,94vw);max-height:90dvh;border:1px solid var(--border);border-radius:14px;padding:0;background:var(--bg);color:var(--fg)}#cur-modal::backdrop{background:rgba(0,0,0,.35)}#cur-modal .cur-wrap{padding:18px}#cur-modal h2{margin:0 0 4px;font-size:18px}#cur-modal .cur-sub{margin:0 0 12px;font-size:13px;color:var(--muted)}#cur-modal .cur-list{max-height:min(320px,40dvh)}.cur-open{margin:0 0 6px}

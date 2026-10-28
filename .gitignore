@@ -11,3 +11,7 @@
 !/PRD(AI)/styles.css
 !/PRD(AI)/app.js
 !/PRD(AI)/prompt.js
+!/curriculum.js
+!/curriculum-data.js
+!/tools/
+!/tools/build-curriculum.py
