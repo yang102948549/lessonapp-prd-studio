@@ -117,7 +117,7 @@ globalThis.Planning = (() => {
     design:v=>[v.view,`${iga(v.mat)}가장 먼저 보이는 카드 중심 화면`],
     visual:v=>[`${v.view} · 포인트 색 한 가지`],
     roles:v=>[`조작 · ${eul(v.evidence)}확인 · 설명 역할을 단계마다 교대`],
-    exclusions:v=>[`${eul(v.product)}자동 점수화하는 기능 제외`],
+    exclusions:v=>[`${eul(v.product)}자동 점수화하는 기능`],
   };
   const mixBase=new Set(['roles','features','design','visual','exclusions','acceptance','output','teacherView','method','flow','rules','feedback']);
   function subjectGenerated(id,answers){const gen=generators[id];if(!gen)return[];const out=[];subjectList(answers).forEach(s=>{const v=vocabFor(s);if(v)gen(v).forEach(label=>out.push({label,group:s,value:label}));});return out;}
@@ -195,7 +195,7 @@ globalThis.Planning = (() => {
 
     step('selfops','운영 비용',6,'앱을 운영하는 데 비용을 쓸 수 있나요?','저장 공간이나 AI를 쓰면 서비스 가입과 설정이 필요하고, 일부는 무료 한도를 넘으면 요금이 나와요. 무료 범위 안에서 만들지, 비용을 쓸 수 있는지 알려 주세요.',['무료만 사용 · 무료 한도 안에서만 만들기','월 몇천 원 정도의 소액 유료도 괜찮음','학교·기관의 예산이나 계정을 쓸 수 있음','아직 모르겠음 · 무료 범위에서 먼저 시작']),
     step('upkeep','만든 뒤 관리',6,'만든 뒤 고치거나 관리는 누가 하나요?','오류를 고치거나 내용을 바꿀 때를 생각해요. AI 코딩 도구에 다시 요청하면 직접 고칠 수도 있어요.',['내가 직접 · AI 도구에 요청해 고치기','한 번 만들고 거의 손대지 않을 예정','동료 교사나 담당자가 함께 관리','학기마다 자료·문항만 바꿔 다시 쓸 예정']),
-    step('exclusions','이번에 미룰 기능',6,'이번 첫 버전에서는 만들지 않을 기능이 있나요?','떠오르지만 지금은 필요 없는 기능을 미리 정해 두면, 개발할 때 범위가 넓어지지 않아요. 이미 정한 답과 겹치는 보기는 숨겨요.',['회원가입·로그인 제외','점수·순위 경쟁 제외','교사용 관리 화면 제외','실시간 학급 집계 제외','학생 활동 중 외부 AI 호출 제외','사진·파일 업로드 제외','학생끼리 채팅·댓글 제외','학습 결과 통계·분석 화면 제외','알림(푸시·이메일) 제외'],{multi:true}),
+    step('exclusions','추가로 고려할 기능',6,'첫 버전 뒤에 추가로 고려해 볼 기능이 있나요?','여기에 고른 기능은 이번 범위에 넣지 않고 다음 후보로만 적어 둬요. 고르지 않은 기능은 이번 버전에 필요한 것만 만든다고 보고, 정한 답과 겹치는 보기는 숨겨요.',['회원가입·로그인','점수·순위 경쟁','교사용 관리 화면','실시간 학급 집계','학생 활동 중 외부 AI 호출','사진·파일 업로드','학생끼리 채팅·댓글','학습 결과 통계·분석 화면','알림(푸시·이메일)'],{multi:true}),
     step('stack','기술 구성',6,'추천 구성을 그대로 쓸까요, 다른 구성을 고를까요?','지금까지의 답으로 화면(프론트엔드), 저장·서버(백엔드), 공개 방법(배포)을 추천했어요. 추천 근거와 주의점을 읽어 보고 고르세요.',[],{}),
     step('acceptance','완료 확인',6,'수업에서 쓰기 전에, 직접 해 보며 확인할 것은 무엇인가요?','“이게 되면 수업에 써도 된다”는 기준을 골라요. 앞에서 정한 답과 관련된 항목만 보여 드려요.',['안내만 보고 처음부터 끝까지 막힘 없이 진행되는지','버튼·카드·슬라이더 같은 핵심 조작이 클릭·터치에 바로 반응하는지','오답을 일부러 골랐을 때 해설이 나오고 다시 도전할 수 있는지','값을 0·음수·최댓값으로 바꿔도 화면과 계산이 정확한지','빈칸이나 미선택으로 넘어가려 할 때 안내가 나오는지','같은 버튼을 빠르게 여러 번 눌러도 결과가 중복되거나 단계가 건너뛰어지지 않는지','수정하거나 되돌렸을 때 결과 화면과 기록이 함께 바뀌는지','PC·태블릿·스마트폰의 가로·세로 화면에서 글자와 자료가 잘리지 않는지','새로고침이나 초기화를 했을 때 정한 저장 규칙대로 동작하는지','제출한 결과가 정한 저장 위치(교사 화면·시트 등)에 나타나는지','여러 학생이 동시에 접속해도 결과가 섞이거나 사라지지 않는지','마이크·소리를 쓸 때 권한 안내가 나오고, 거부해도 앱이 멈추지 않는지','챗봇이 수업과 무관하거나 부적절한 질문에도 안전하게 답하는지','자료·정답·해설의 내용이 정확한지 교사가 직접 검토했는지','정한 활동 시간 안에 처음부터 끝까지 교사 시연이 가능한지'],{multi:true}),
     step('extra','마지막 요청',6,'개발할 때 꼭 챙겨야 할 요청이 더 있나요?','수업 중 생길 수 있는 상황을 미리 정해 두면 좋아요. 해당되는 것을 모두 고르세요.',['추가 요청 없음','같은 코드로 다시 들어오면 하던 활동을 이어서 할 수 있게','네트워크가 끊겨도 입력한 내용이 사라지지 않게','같은 학생이 두 번 접속해도 결과가 중복되지 않게','수업이 끝나면 교사가 한 번에 초기화할 수 있게','자료·정답·이미지는 교사가 출처와 대조해 검토','이미지·음원의 출처와 이용 조건을 표시','전자칠판(전체 화면)에서도 보기 좋게'],{multi:true,placeholder:'예: 수업 중 새로고침해도 이전 답이 남아 있으면 좋겠어요.'}),
@@ -338,8 +338,8 @@ globalThis.Planning = (() => {
       case 'teacherView':
         {const l2=sh?list:keep(/제출|모아보기|CSV|키워드|투표|차트|숨기기/);return l2.some(o=>/(카드로|키워드로) 모아보기/.test(lab(o)))?l2.filter(o=>!/^답변 카드 모아보기|^키워드 모아보기/.test(lab(o))):l2;}
       case 'exclusions':{const tch=val(a,'teacher');let o=list;const drop=re=>{o=o.filter(x=>!re.test(lab(x)));};
-        if(/구글 계정으로 로그인/.test(val(a,'identity')))drop(/로그인 제외/);if(tch&&!/별도 관리 화면 없음/.test(tch))drop(/관리 화면 제외/);if(isRealtime(a))drop(/실시간 학급 집계/);
-        if(AI_RE.test(val(a,'aiuse')))drop(/외부 AI 호출 제외/);if(/올림/.test(val(a,'files')))drop(/업로드 제외/);if(/친구.*(의견|답글)/.test(inter))drop(/채팅·댓글/);return o;}
+        if(/구글 계정으로 로그인/.test(val(a,'identity')))drop(/회원가입·로그인/);if(tch&&!/별도 관리 화면 없음/.test(tch))drop(/관리 화면/);if(isRealtime(a))drop(/실시간 학급 집계/);
+        if(AI_RE.test(val(a,'aiuse')))drop(/외부 AI 호출/);if(/올림/.test(val(a,'files')))drop(/업로드/);if(/친구.*(의견|답글)/.test(inter))drop(/채팅·댓글/);return o;}
       case 'extra':
         return sh?list:keep(/다시 들어오면|두 번 접속/);
       case 'acceptance':{const kind=val(a,'kind'),media=val(a,'media'),out=val(a,'output');let l=list;
@@ -357,7 +357,7 @@ globalThis.Planning = (() => {
     }
   }
   /* 어떤 질문이든 "해당 없음" 답을 고를 수 있게, 필요 없음 계열 선택지를 마지막에 보탠다 */
-  const NONE={rules:'이동 제한 없음 · 언제든 자유롭게 이동',feedback:'별도 안내 없이 학생이 스스로 확인',design:'특별한 요구 없음 · 기본 스타일로',visual:'특별한 요구 없음 · 기본 스타일로',exclusions:'제외할 기능 없음',materials:'별도 자료 없음 · 교사가 말로 안내',story:'별도 이야기 없이 탐구 질문으로 시작'};
+  const NONE={rules:'이동 제한 없음 · 언제든 자유롭게 이동',feedback:'별도 안내 없이 학생이 스스로 확인',design:'특별한 요구 없음 · 기본 스타일로',visual:'특별한 요구 없음 · 기본 스타일로',exclusions:'추가로 고려할 기능 없음 · 지금 정한 기능만',materials:'별도 자료 없음 · 교사가 말로 안내',story:'별도 이야기 없이 탐구 질문으로 시작'};
   function options(id,answers){const list=refineOptions(id,answers,baseOptions(id,answers));const none=NONE[id];if(!none||list.some(o=>lab(o)===none))return list;return [...list,list.length&&typeof list[0]!=='string'?{label:none,group:'공통',value:none}:none];}
   const sectionDefs=[
     ['기본 수업 정보',['project','school','grades','subjects','idea','stage','objective','duration']],
@@ -372,16 +372,12 @@ globalThis.Planning = (() => {
   function sections(answers){return sectionDefs.map(([title,ids])=>[title,ids.filter(id=>!stepById(id).when||stepById(id).when(answers)).map(id=>{const v=value(answers,id);return `### ${stepById(id).title}\n${v?v+(id==='stack'&&!/^미정/.test(v)?'\n'+stackText(answers):''):'[미정] 질문에 답하거나 AI 제안을 검토해 주세요.'}`;}).join('\n\n')]);}
   function checks(answers){const ids=['idea','objective','activity','method','materials','flow','control','rules','feedback','interaction','input','output','participants','identity','results','aiuse','stack','acceptance'];return ids.map(id=>({id,label:steps.find(s=>s.id===id).title,done:!!value(answers,id)&&!/^미정/.test(value(answers,id))}));}
   function conflicts(answers){const v=id=>val(answers,id);const issues=[];const rt=isRealtime(answers),shared=needsShare(answers),ai=AI_RE.test(v('aiuse')),stack=stackByLabel(answers.stack);
-    if(/구글 계정으로 로그인/.test(v('identity'))&&/로그인 제외/.test(v('exclusions')))issues.push('학생 구글 로그인과 “회원가입·로그인 제외” 중 하나를 선택해 주세요.');
     if(/구글 계정으로 로그인/.test(v('identity'))&&/구글 계정에 제한/.test(v('network')))issues.push('학생 구글 계정에 제한이 있는데 구글 로그인을 쓰려고 해요. 별명·코드 방식도 검토해 주세요.');
     if(/오프라인/.test(v('network'))&&(shared||rt))issues.push('인터넷 없이 써야 하는데 결과를 모으거나 실시간으로 공유하려고 해요. 하나를 정해 주세요.');
     if(!shared&&answers.results&&/참여 현황|결과를 모아|공개 여부/.test(v('teacher')))issues.push('교사가 학생 결과를 보려면 “결과물의 행방”에서 “교사가 모아서 봄”을 선택해야 해요.');
     if(/수업이 끝나면 바로 삭제/.test(v('retention'))&&/누적|다음 시간/.test(v('results')))issues.push('“수업 끝나면 삭제”와 “다음 시간에도 이어서 누적”이 서로 충돌해요.');
     if(/AI 모델이 실시간/.test(val(answers,'detail'))&&/활동 중 AI 사용 없음|수업 전에 AI로/.test(v('aiuse')))issues.push('챗봇이 AI로 실시간 답변한다고 했는데 “AI 사용” 답이 달라요. “챗봇이 AI로 실시간 답변”으로 맞춰 주세요.');
-    if(ai&&/외부 AI 호출 제외/.test(v('exclusions')))issues.push('학생 활동 중 AI 사용과 “외부 AI 호출 제외”가 충돌해요.');
     if(ai&&/무료만|무료 범위에서/.test(v('selfops')))issues.push('학생이 직접 AI를 쓰면 무료 호출 한도(분당 요청 수)에 걸릴 수 있어요. 미리 만든 자료로 대체할 수 있는지 확인해 주세요.');
-    if(rt&&/실시간 학급 집계 제외/.test(v('exclusions')))issues.push('실시간 공유·제어와 “실시간 학급 집계 제외”가 충돌해요.');
-    if(/사진이나 그림|파일을 올림/.test(v('files'))&&/사진·파일 업로드 제외/.test(v('exclusions')))issues.push('사진·파일 업로드와 “업로드 제외” 중 하나를 선택해 주세요.');
     if(stack&&stack.id==='static'&&(shared||rt))issues.push('서버 없는 구성(정적 웹페이지)으로는 결과를 모으거나 실시간으로 공유할 수 없어요.');
     if(stack&&stack.id==='appsscript'&&rt)issues.push('Apps Script는 몇 초마다 새로 불러오는 방식이라 실시간 공유가 느릴 수 있어요.');
     {const u=unitInfo(answers);
@@ -390,7 +386,6 @@ globalThis.Planning = (() => {
       if(u.cls&&/각자의 속도/.test(value(answers,'control')))issues.push('학급 전체 활동인데 학생이 각자의 속도로 진행하도록 정했어요.');
       if(/친구.*(의견|답글)/.test(value(answers,'interaction'))&&answers.results&&!shared)issues.push('친구 의견 보기·답글에는 결과를 서로 볼 수 있어야 해요. “결과물의 행방”을 확인해 주세요.');}
     if(/수행평가로 기록/.test(value(answers,'score'))&&answers.results&&!shared)issues.push('수행평가 점수로 기록하려면 교사가 볼 수 있게 저장해야 해요. “결과물의 행방”에서 “교사가 모아서 봄”을 확인해 주세요.');
-    if(/교사용 관리 화면 제외/.test(v('exclusions'))&&/교사가 시작|참여 현황|공개 여부|자료·문항/.test(v('teacher')))issues.push('교사용 기능과 관리 화면 제외 조건을 맞춰 주세요.');
     return issues;
   }
   const specification=`당신은 교사를 위한 수업용 웹앱 설계 동료다. 한국어로 쓴다. 단순한 아이디어 목록이 아니라 개발자가 추가로 핵심 동작을 추측하지 않아도 구현 가능한 PRD를 작성한다.
@@ -411,7 +406,7 @@ globalThis.Planning = (() => {
 ## 5. 디자인 및 화면 스타일
 톤, 색, 글꼴, 화면 배치, 전자칠판·모바일·태블릿의 크기와 가독성을 입력에 맞춰 정리한다.
 ## 6. 운영 조건·기술 구성
-필수 기능과 제외 기능을 구분. 학생 결과물의 저장 위치·공유 시점·보관 기간, 사진·파일·AI 사용 여부, 교사가 결과를 받는 방식을 명시. 기술 구성은 확정한 항목(프론트엔드·백엔드/데이터 저장·배포)과 그 근거를 쓰고, 기술 용어에는 한 줄 쉬운 설명을 덧붙인다. 확정하지 않은 도구로 임의로 바꾸지 않는다. 저장하는 데이터 항목(이름·타입·누가 쓰고 읽는지), 접근 권한·보안 규칙, 무료 사용 한도와 넘을 때의 대응, 새로고침·창 닫기·초기화 결과, 만드는 순서를 포함. 독립 실행과 실시간 공유의 충돌을 감추지 않는다. PC/태블릿, 터치/클릭, 색 이외의 상태 표시, 긴 글의 잘림 방지를 포함.
+필수 기능과 추가로 고려할 기능(이번 범위 밖의 다음 후보)을 구분. 학생 결과물의 저장 위치·공유 시점·보관 기간, 사진·파일·AI 사용 여부, 교사가 결과를 받는 방식을 명시. 기술 구성은 확정한 항목(프론트엔드·백엔드/데이터 저장·배포)과 그 근거를 쓰고, 기술 용어에는 한 줄 쉬운 설명을 덧붙인다. 확정하지 않은 도구로 임의로 바꾸지 않는다. 저장하는 데이터 항목(이름·타입·누가 쓰고 읽는지), 접근 권한·보안 규칙, 무료 사용 한도와 넘을 때의 대응, 새로고침·창 닫기·초기화 결과, 만드는 순서를 포함. 독립 실행과 실시간 공유의 충돌을 감추지 않는다. PC/태블릿, 터치/클릭, 색 이외의 상태 표시, 긴 글의 잘림 방지를 포함.
 ## 7. 완료 기준
 흐름·자료/정답 정확성·재도전·입력/수정·호환·저장/초기화·수업 시간에 대해 '어떤 조작을 하면 어떤 결과가 보여야 하는가' 형태의 검증 기준을 작성. 정의하지 않은 동작의 성공을 선언하지 않는다. 끝에 교사 검토가 필요한 제안과 미정 사항을 따로 정리.
 분량보다 일관성을 우선하되 문구와 동작을 생략한 요약문으로 축약하지 않는다. 마크다운 제목·문단·목록으로 작성하고 코드 블록으로 전체를 감싸지 않는다.`;
@@ -422,7 +417,7 @@ globalThis.Planning = (() => {
   function labeledAnswers(answers){return steps.filter(s=>answers[s.id]&&(!s.when||s.when(answers))).map(s=>`- ${s.title}: ${value(answers,s.id)}${s.id==='stack'&&!/^미정/.test(value(answers,s.id))?'\n'+stackText(answers):''}`).join('\n')||'(아직 정한 답변 없음)';}
   function editPrompt(answers,draft,instruction){return `${specification.split('\n').slice(0,3).join('\n')}\n\n[작업] 아래 기존 PRD를 사용자 요청에 맞게 고친다. 요청과 관련된 섹션만 "## 번호. 제목"으로 시작하는 전체 마크다운으로 다시 쓰고, 관련 없는 섹션은 출력하지 않는다. 다른 섹션과 용어·버튼 이름·시간·자료 ID를 맞춘다. 확정 답변과 충돌하는 요청이면 해당 섹션 안에 [확인 필요]로 표시한다.\n\n사용자 요청:\n${instruction}\n\n확정한 질문별 답변:\n${labeledAnswers(answers)}\n\n기존 PRD:\n${draft}\n\n출력은 JSON 하나만: {"sections":[{"n":번호,"markdown":"해당 섹션 전체(제목 포함) 마크다운"}]}`;}
   function coachPrompt(answers,id,request,proposal=false){const s=steps.find(s=>s.id===id);return `당신은 수업 웹앱 설계 동료다. 한국어로 대화한다. 사용자는 아래의 수업을 설계하고 있고, 지금까지 정한 답변과 일관되게 도와야 한다.\n[지금까지 정한 수업 정보]\n${labeledAnswers(answers)}\n\n[지금 정하는 질문] ${s?.question||'최종 검토'}\n[활동 분기] ${selectedBranches(answers).map(b=>b.label).join(', ')}\n\n규칙: 위 과목·학교급·학년·단원 주제·배움의 목표·활동에 반드시 맞는 내용만 쓴다. 다른 과목에도 그대로 쓸 수 있는 일반적인 답을 하지 않는다. 이미 정한 답변과 충돌하면 그 점을 알린다. 사용자가 정하지 않은 내용은 [제안]이라고 표시한다. 평가 요소를 추천하는 요청으로 오해하지 않는다. 교과서나 성취기준은 추측하지 않는다.\n${proposal?'현재 질문에 들어갈 구체적인 답변 초안 1개만 작성한다. 활동·주제를 연결하고 실제 문구·개수·조건을 필요한 만큼 제안한다. 다른 단계로 진행하거나 전체 PRD를 쓰지 않는다. 마크다운 기호 없이 순수한 문장으로만, 간결하게 쓴다. JSON {"draft":"초안"} 하나만 출력한다.':'사용자의 질문에 간결하게 설명하고 가능한 선택지를 비교한다. 답변을 확정하거나 자동으로 다음 단계로 넘어가지 않는다. answer에는 마크다운 표·제목·구분선 없이 짧은 문단과 "- " 목록만 쓰고 600자 이내로 한다. choices에는 사용자가 현재 질문의 답변으로 바로 고를 수 있는 짧은 문장 3~4개를 쓴다(질문 형태 금지). JSON {"answer":"...","choices":["...","..."]} 하나만 출력한다.'}\n사용자 메시지: ${request}`;}
-  function migrate(saved){if(!saved||!saved.answers||!Array.isArray(saved.messages))return null;const next={...saved,version:3};
+  function migrate(saved){if(!saved||!saved.answers||!Array.isArray(saved.messages))return null;const next={...saved,version:3};if(next.answers&&/제외/.test(JSON.stringify(next.answers.exclusions||'')))next.answers={...next.answers,exclusions:undefined};
     if(saved.version!==3){const ids=new Set(steps.map(s=>s.id));next.answers=Object.fromEntries(Object.entries(saved.answers).filter(([k])=>ids.has(k)));const open=steps.findIndex(s=>(!s.when||s.when(next.answers))&&!next.answers[s.id]);next.step=open<0?steps.length:open;next.draftStale=!!saved.draft;}
     else next.step=Math.min(Math.max(Number(saved.step)||0,0),steps.length);return next;}
   return {steps,visibleSteps,groups,parts,sectionDefs,options,sections,checks,conflicts,prompt,promptPart,editPrompt,prdWaves,coachPrompt,subjectsFor,migrate,selectedBranches,recommend,stackText};

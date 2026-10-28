@@ -2,11 +2,18 @@ const $ = id => document.getElementById(id);
 const PROJECTS_KEY = 'oni.prdai.projects.v1', DEFAULT_NAME = '나의 수업 웹앱', MAX_PROJECTS = 20;
 const SECTIONS = Prompt.sections;
 const fresh = () => ({version:1, messages:[], doc:{}, chips:Prompt.welcome.chips.slice(), ready:false, focus:''});
-let projects = [], currentId = '', state = fresh(), apiKey = '', model = 'gemini-3.8-flash', modelList = [], busy = false, toastTimer, editingId = '', mapOpen = new Set(['A']), mapSel = '', mapSeen = '';
+let projects = [], currentId = '', state = fresh(), apiKey = '', model = 'gemini-3.8-flash', modelList = [], busy = false, toastTimer, editingId = '', mapOpen = new Set(['T0', 'G0']), mapSel = '', mapSeen = '';
 const uid = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const currentProject = () => projects.find(p => p.id === currentId);
-const loadState = raw => ({...fresh(), ...(raw && typeof raw === 'object' ? raw : {})});
+/* 이전 버전의 섹션 id를 새 질문 항목으로 옮긴다(예전 기획서 내용 보존) */
+const OLD_IDS = {tool:'project', context:'idea', goal:'objective', why:'idea', action:'interaction', content:'materials', env:'devices', ops:'stack', done:'acceptance', open:'extra', nongoals:'extra'};
+function migrateDoc(st) {
+  const known = new Set(Prompt.sections.map(s => s.id)), doc = {};
+  Object.entries(st.doc || {}).forEach(([k, v]) => { const id = known.has(k) ? k : (OLD_IDS[k] || 'extra'); if (typeof v === 'string' && v.trim()) doc[id] = doc[id] ? doc[id] + '\n\n' + v : v; });
+  st.doc = doc; if (st.focus && !known.has(st.focus)) st.focus = OLD_IDS[st.focus] || ''; return st;
+}
+const loadState = raw => migrateDoc({...fresh(), ...(raw && typeof raw === 'object' ? raw : {})});
 
 try {
   const all = JSON.parse(localStorage.getItem(PROJECTS_KEY) || 'null');
@@ -19,11 +26,12 @@ if (!projects.length) { projects = [{id:uid(), name:DEFAULT_NAME, updated:Date.n
 state = loadState(currentProject().state);
 
 function redact(text) { return String(text).replace(/AIza[\w-]{20,}/g, '[API 키 삭제됨]').split(apiKey || '\u0000').join(apiKey ? '[API 키 삭제됨]' : '\u0000'); }
+function renderSaveStatus() { $('save-status').textContent = `${projects.length}/${MAX_PROJECTS}개 · 이 브라우저에만 저장`; }
 function persist() {
   try {
     const p = currentProject(); p.state = state; p.updated = Date.now();
     localStorage.setItem(PROJECTS_KEY, JSON.stringify({current:currentId, items:projects}));
-    $('save-status').textContent = '브라우저에 저장됨';
+    renderSaveStatus();
   } catch { $('save-status').textContent = '저장 공간 부족 · MD로 다운로드하세요'; }
 }
 function toast(message, action) {
@@ -106,7 +114,7 @@ function renderDocument(flashIds = []) {
   $('progress-text').textContent = `${SECTIONS.length}개 항목 중 ${filled}개가 채워졌어요`;
   $('copy-doc').classList.toggle('ready', state.ready && !busy);
   const root = $('prd-preview'); root.replaceChildren();
-  SECTIONS.forEach(s => {
+  const addSection = s => {
     const sec = document.createElement('div'); sec.className = 'prd-section' + (flashIds.includes(s.id) ? ' flash' : ''); sec.id = 'sec-' + s.id;
     const h = document.createElement('h3'); h.append(document.createTextNode(s.title));
     const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'edit'; edit.textContent = '고치기'; edit.onclick = () => { editingId = s.id; renderDocument(); }; h.append(edit); sec.append(h);
@@ -119,14 +127,17 @@ function renderDocument(flashIds = []) {
     } else if (sectionBody(s.id)) sec.append(renderMd(sectionBody(s.id)));
     else { const p = document.createElement('p'); p.className = 'empty'; p.textContent = s.hint; sec.append(p); }
     root.append(sec);
-  });
+  };
+  Prompt.docSections.forEach(g => { const h2 = document.createElement('h2'); h2.className = 'doc-h2'; h2.textContent = g.title; root.append(h2); g.ids.forEach(id => addSection(sectionById(id))); });
 }
 const mk = (tag, cls = '', text = '') => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
 const isFilled = id => !!sectionBody(id);
 const sectionById = id => SECTIONS.find(s => s.id === id);
 const currentSection = () => (state.focus && sectionById(state.focus)) ? state.focus : (SECTIONS.find(s => !isFilled(s.id)) || {}).id || '';
 const partOf = id => Prompt.parts.find(p => p.ids.includes(id));
+const topOf = gid => Prompt.tops.find(t => t.groups.includes(gid));
 function renderProjects() {
+  renderSaveStatus();
   const list = $('project-list'); list.replaceChildren();
   projects.forEach(p => {
     const row = mk('div', 'project-row' + (p.id === currentId ? ' active' : ''));
@@ -138,17 +149,19 @@ function renderProjects() {
   $('project-title').textContent = currentProject().name;
 }
 function renderMap() {
-  const host = $('map-canvas'); host.replaceChildren(); const cur = currentSection(), curPart = partOf(cur);
-  if (curPart && curPart.id !== mapSeen) { mapOpen.add(curPart.id); mapSeen = curPart.id; }
+  const host = $('map-canvas'); host.replaceChildren(); const cur = currentSection(), curPart = partOf(cur), curTop = curPart && topOf(curPart.id);
+  if (curPart && curPart.id !== mapSeen) { mapOpen.add(curPart.id); if (curTop) mapOpen.add(curTop.id); mapSeen = curPart.id; }
   const filled = SECTIONS.filter(s => isFilled(s.id)).length; $('map-summary').textContent = `${filled}/${SECTIONS.length} 항목이 채워졌어요`;
   const rootUl = mk('ul', 'tree'), rootLi = mk('li', 't-root');
   const rb = mk('button', 't-root-btn', currentProject().name); rb.type = 'button'; rb.title = '눌러서 프로젝트 이름 바꾸기'; rb.onclick = () => renameProject(); rootLi.append(rb);
-  const partUl = mk('ul');
-  Prompt.parts.forEach(part => {
+  const label = (id, title, done, total) => {
+    const open = mapOpen.has(id), b = mk('button', 't-part-label'); b.type = 'button'; b.setAttribute('aria-expanded', String(open));
+    b.append(mk('span', '', `${open ? '▾' : '▸'} ${title}`), mk('span', 'cnt', `${done}/${total}`)); b.onclick = () => { open ? mapOpen.delete(id) : mapOpen.add(id); renderMap(); }; return b;
+  };
+  const buildPart = part => {
     const members = part.ids.map(sectionById), done = members.filter(m => isFilled(m.id)).length, open = mapOpen.has(part.id);
     const li = mk('li', 't-part' + (done === members.length ? ' complete' : '') + (curPart === part ? ' current' : ''));
-    const b = mk('button', 't-part-label'); b.type = 'button'; b.setAttribute('aria-expanded', String(open));
-    b.append(mk('span', '', `${open ? '▾' : '▸'} ${part.title}`), mk('span', 'cnt', `${done}/${members.length}`)); b.onclick = () => { open ? mapOpen.delete(part.id) : mapOpen.add(part.id); renderMap(); }; li.append(b);
+    li.append(label(part.id, part.title, done, members.length));
     if (open) {
       const ul = mk('ul');
       members.forEach(m => {
@@ -159,9 +172,17 @@ function renderMap() {
       });
       li.append(ul);
     }
-    partUl.append(li);
+    return li;
+  };
+  const topUl = mk('ul');
+  Prompt.tops.forEach(top => {
+    const groups = top.groups.map(id => Prompt.parts.find(p => p.id === id)), ids = groups.flatMap(g => g.ids), done = ids.filter(isFilled).length;
+    const li = mk('li', 't-part' + (done === ids.length ? ' complete' : '') + (curTop === top ? ' current' : ''));
+    li.append(label(top.id, top.title, done, ids.length));
+    if (mapOpen.has(top.id)) { const ul = mk('ul'); groups.forEach(g => ul.append(buildPart(g))); li.append(ul); }
+    topUl.append(li);
   });
-  rootLi.append(partUl); rootUl.append(rootLi); host.append(rootUl);
+  rootLi.append(topUl); rootUl.append(rootLi); host.append(rootUl);
 }
 function buildMapDetail(m) {
   const box = mk('div', 'map-detail'), head = mk('div', 'md-head'); head.append(mk('span', '', m.title));
@@ -282,12 +303,12 @@ function send(text) {
 }
 /* 교육과정 성취기준 안내: AI가 학년·교과를 물을 차례(처음 포함)에는 칩 대신 채팅 안에서 성취기준을 검색해 고른다 */
 let curEl = null, curHandle = null, curDismissed = false, curForced = false;
-const guideActive = () => !busy && !curDismissed && (curForced || state.focus === 'context' || !state.messages.length);
+const guideActive = () => !busy && !curDismissed && (curForced || ['school', 'grades', 'subjects', 'idea'].includes(state.focus) || !state.messages.length);
 function guideCard() {
   if (curEl) return curEl;
   curEl = document.createElement('div'); curEl.className = 'cur-guide';
   const h = document.createElement('h3'); h.textContent = '교육과정에서 수업 고르기';
-  const sub = document.createElement('p'); sub.className = 'cur-sub'; sub.textContent = '낱말을 검색하거나 학년군·교과를 골라 성취기준을 선택하세요. 고른 원문이 기획서의 사용 수업과 학습 목표에 반영돼요.';
+  const sub = document.createElement('p'); sub.className = 'cur-sub'; sub.textContent = '낱말을 검색하거나 학년군·교과를 골라 성취기준을 선택하세요. 고른 원문이 기획서의 단원과 주제에 반영돼요.';
   const body = document.createElement('div');
   const act = document.createElement('div'); act.className = 'cur-guide-actions';
   const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'text-button'; skip.textContent = '직접 입력할게요';
@@ -300,10 +321,11 @@ ${Curriculum.format(r)}`)) { curHandle.reset(); curForced = false; }
   return curEl;
 }
 $('cur-open').onclick = () => { curForced = true; curDismissed = false; render(); scrollChat(); };
+$('save-status').onclick = () => panel('settings');
 $('composer').onsubmit = e => { e.preventDefault(); if (send($('chat-input').value)) $('chat-input').value = ''; };
 $('chat-input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('composer').requestSubmit(); } };
 
-const docText = () => '# ' + currentProject().name + ' PRD\n\n' + SECTIONS.map((s, i) => `## ${s.title}\n${sectionBody(s.id) || '[미정]'}`).join('\n\n');
+const docText = () => '# ' + currentProject().name + ' PRD\n\n> 질문 답변을 정리한 설계 초안입니다. [미정] 항목과 자료 원문을 확인하세요.\n\n' + Prompt.docSections.map(g => `## ${g.title}\n` + g.ids.map(id => `### ${sectionById(id).title}\n${sectionBody(id) || '[미정] 질문에 답하거나 AI 제안을 검토해 주세요.'}`).join('\n\n')).join('\n\n');
 $('copy-doc').onclick = async () => { try { await navigator.clipboard.writeText(docText()); toast('기획서를 복사했어요.'); } catch { toast('복사 권한이 없어요. MD 다운로드를 사용해 주세요.'); } };
 function download(blob, name) { const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 $('download-doc').onclick = () => download(new Blob([docText()], {type:'text/markdown;charset=utf-8'}), (currentProject().name.replace(/[\\/:*?"<>|]/g, '') || 'PRD') + '-PRD.md');
@@ -366,8 +388,8 @@ $('remove-key').onclick = () => { modelList = []; if (busy) { toast('진행 중�
 $('api-key').onkeydown = e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); $('connect-key').click(); } };
 $('map-tab').onclick = () => panel('map'); $('document-tab').onclick = () => panel('document'); $('settings-tab').onclick = () => panel('settings');
 $('panel-toggle').onclick = () => $('detail-panel').classList.toggle('mobile-open');
-$('map-expand').onclick = () => { Prompt.parts.forEach(p => mapOpen.add(p.id)); renderMap(); };
-$('map-collapse').onclick = () => { mapOpen.clear(); const c = partOf(currentSection()); if (c) mapOpen.add(c.id); renderMap(); };
+$('map-expand').onclick = () => { Prompt.parts.forEach(p => mapOpen.add(p.id)); Prompt.tops.forEach(t => mapOpen.add(t.id)); renderMap(); };
+$('map-collapse').onclick = () => { mapOpen.clear(); const c = partOf(currentSection()); if (c) { mapOpen.add(c.id); const t = topOf(c.id); if (t) mapOpen.add(t.id); } renderMap(); };
 const SB_KEY = 'oni.prdai.sidebar.v1'; let sbState = {}; try { sbState = JSON.parse(localStorage.getItem(SB_KEY) || '{}'); } catch {}
 document.querySelectorAll('.sb-toggle').forEach(btn => { const target = $(btn.dataset.target); const apply = open => { target.hidden = !open; btn.setAttribute('aria-expanded', String(open)); }; apply(sbState[btn.dataset.target] !== false); btn.onclick = () => { const open = target.hidden; apply(open); sbState[btn.dataset.target] = open; try { localStorage.setItem(SB_KEY, JSON.stringify(sbState)); } catch {} }; });
 window.addEventListener('storage', e => { if (e.key === PROJECTS_KEY) $('save-status').textContent = '다른 탭에서 변경됨 · 새로고침하면 반영돼요'; });

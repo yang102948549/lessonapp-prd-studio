@@ -12,7 +12,8 @@ const currentProject=()=>projects.find(p=>p.id===currentId);
 let selected = new Set(Array.isArray(state.answers[definitions[state.step]?.id])?state.answers[definitions[state.step].id]:[]), apiKey='', model='gemini-3.8-flash', busy=false, editing=false, toastTimer, chatMode='answer';
 const deletedIds=new Set();
 function mergeStored(){try{const all=JSON.parse(localStorage.getItem(PROJECTS_KEY)||'null');(all?.items||[]).forEach(p=>{if(p.id&&!deletedIds.has(p.id)&&!projects.some(x=>x.id===p.id))projects.push({id:p.id,name:p.name||DEFAULT_NAME,updated:p.updated||0,state:p.state});});}catch{}}
-function persist(){try{mergeStored();const p=currentProject();p.state=state;p.updated=Date.now();localStorage.setItem(PROJECTS_KEY,JSON.stringify({current:currentId,items:projects}));$('save-status').textContent='브라우저에 저장됨';}catch{$('save-status').textContent='저장 공간 부족 · MD로 다운로드하세요';}}
+function renderSaveStatus(){$('save-status').textContent=`${projects.length}/${MAX_PROJECTS}개 · 이 브라우저에만 저장`;}
+function persist(){try{mergeStored();const p=currentProject();p.state=state;p.updated=Date.now();localStorage.setItem(PROJECTS_KEY,JSON.stringify({current:currentId,items:projects}));renderSaveStatus();}catch{$('save-status').textContent='저장 공간 부족 · MD로 다운로드하세요';}}
 function toast(message,action){const el=$('toast');el.replaceChildren(document.createTextNode(message));if(action){const b=document.createElement('button');b.type='button';b.textContent=action.label;b.onclick=()=>{el.style.display='none';action.run();};el.append(b);}el.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.style.display='none',action?7000:2800);}
 function redact(text){return String(text).replace(/AIza[\w-]{20,}/g,'[API 키 삭제됨]').split(apiKey || '\u0000').join(apiKey?'[API 키 삭제됨]':'\u0000');}
 function addMessage(role,text){state.messages.push({role,text:redact(text),kind:'conversation'});}
@@ -86,7 +87,7 @@ async function deleteProject(id){if(busy)return;const p=projects.find(x=>x.id===
 function storageUsage(){try{const raw=localStorage.getItem(PROJECTS_KEY)||'';return raw.length*2;}catch{return 0;}}
 function renderStorage(){const used=storageUsage();const pct=Math.min(100,Math.round(used/QUOTA_BYTES*100));const mb=(used/1048576).toFixed(2);
   const count=`${projects.length}/${MAX_PROJECTS}개`;
-  $('project-count').textContent=`${count} · 이 브라우저에만 저장`;
+  renderSaveStatus();
   $('storage-summary').textContent=`프로젝트 ${count} · 저장 공간 약 ${mb}MB 사용 (브라우저 한도 약 5MB 중 ${pct}%)`;
   $('storage-bar').style.width=pct+'%';
   $('storage-warn').textContent=projects.length>=MAX_PROJECTS?'프로젝트가 가득 찼어요. 새로 만들려면 하나를 삭제해 주세요.':pct>=80?'저장 공간이 거의 찼어요. 내보내기로 파일에 보관한 뒤 오래된 프로젝트를 삭제해 주세요.':'';
@@ -362,4 +363,4 @@ $('import-file').onchange=async()=>{const file=$('import-file').files[0];$('impo
 
 window.addEventListener('storage',e=>{if(e.key===PROJECTS_KEY&&!busy){mergeStored();renderProjects();}});
 
-$('project-count').onclick=()=>panel('settings');
+$('save-status').onclick=()=>panel('settings');
