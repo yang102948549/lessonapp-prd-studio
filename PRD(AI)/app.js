@@ -92,6 +92,8 @@ function renderMessages() {
   const add = (role, build) => { const m = document.createElement('div'); m.className = 'message ' + role; if (role === 'assistant') { const w = document.createElement('div'); w.className = 'who'; w.textContent = '✳ 수업 웹앱 개발 도우미'; m.append(w); } build(m); root.append(m); return m; };
   add('assistant', m => m.append(renderMd(Prompt.welcome.text)));
   state.messages.forEach(msg => add(msg.role, m => { if (msg.role === 'user') m.append(document.createTextNode(msg.text)); else if (msg.error) { const e = document.createElement('div'); e.className = 'error-msg'; e.textContent = msg.text; m.append(e); } else m.append(renderMd(msg.text)); }));
+  const cs = !busy && sectionById(currentSection());
+  if (cs) { const q = document.createElement('div'); q.className = 'q-block'; const h = document.createElement('h2'); h.textContent = cs.question; const p = document.createElement('p'); p.textContent = cs.help; q.append(h, p); root.append(q); }
   if (guideActive()) root.append(guideCard());
   if (busy) add('assistant', m => { const t = document.createElement('span'); t.className = 'typing'; t.setAttribute('aria-label', '답변을 생각하고 있어요'); t.innerHTML = '<i></i><i></i><i></i>'; m.append(t); });
 }
