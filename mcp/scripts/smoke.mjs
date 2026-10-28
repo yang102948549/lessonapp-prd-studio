@@ -1,0 +1,23 @@
+/* 서버를 실제로 띄워 도구를 호출해 보는 점검 */
+import assert from 'node:assert/strict';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+const bin = join(dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'server.mjs');
+const client = new Client({ name: 'smoke', version: '0' });
+await client.connect(new StdioClientTransport({ command: process.execPath, args: [bin] }));
+const call = async (name, args) => (await client.callTool({ name, arguments: args })).content[0].text;
+assert.equal((await client.listTools()).tools.length, 5);
+assert.match(await call('browse_curriculum', { school: '초등학교', grades: [5] }), /초5~6 \/ 수학/);
+assert.match(await call('search_standards', { query: '혼합 계산', school: '초등학교', grades: [5] }), /\[6수01-01\]/);
+assert.match(await call('get_standard', { code: '[6수01-01]' }), /혼합 계산/);
+assert.match(await call('search_standards', { subject: '제2외국어', school: '고등학교', limit: 3 }), /제2외국어/);
+assert.match(await call('get_planning_questions', { answers: {} }), /school/);
+const prd = await call('build_prd', { title: '분수 탐험', answers: { school: '초등학교', grades: ['5학년'], subjects: ['수학'], idea: '분수의 덧셈' }, standards: ['6수01-01', '없는코드'] });
+assert.match(prd, /# 분수 탐험 PRD/);
+assert.match(prd, /\[6수01-01\]/);
+assert.match(prd, /찾지 못한 코드: 없는코드/);
+assert.match(prd, /빠진 핵심 항목/);
+console.log('ok');
+await client.close();

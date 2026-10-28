@@ -1,0 +1,21 @@
+{
+  "name": "lessonapp-prd-mcp",
+  "version": "0.1.0",
+  "description": "수업 웹앱 PRD 기획 MCP 서버: 2022 개정 교육과정 성취기준 검색, 기획 질문, PRD 초안 생성",
+  "type": "module",
+  "bin": { "lessonapp-prd-mcp": "bin/server.mjs" },
+  "files": ["bin", "data", "README.md", "NOTICE.md", "LICENSE"],
+  "scripts": {
+    "sync": "node scripts/sync.mjs",
+    "prepack": "node scripts/sync.mjs",
+    "test": "node scripts/smoke.mjs"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.25.0"
+  },
+  "keywords": ["mcp", "korean", "curriculum", "education", "prd"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/yang102948549/lessonapp-prd-studio.git", "directory": "mcp" }
+}

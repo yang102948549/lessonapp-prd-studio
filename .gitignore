@@ -15,3 +15,15 @@
 !/curriculum-data.js
 !/tools/
 !/tools/build-curriculum.py
+!/mcp/
+!/mcp/package.json
+!/mcp/package-lock.json
+!/mcp/README.md
+!/mcp/NOTICE.md
+!/mcp/LICENSE
+!/mcp/bin/
+!/mcp/bin/server.mjs
+!/mcp/scripts/
+!/mcp/scripts/*.mjs
+!/mcp/data/
+!/mcp/data/*.js
