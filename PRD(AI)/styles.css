@@ -123,3 +123,6 @@ main{flex:1;min-width:0;display:flex;flex-direction:column}
 
 /* 시작 질문(학년 고르기) 선택 표시 */
 .chip[aria-pressed=true]{background:var(--accent);color:var(--inverse);border-color:var(--accent)}.chip.chip-done{border-color:var(--ok);font-weight:600}
+
+/* 시작 질문의 선택지는 질문 바로 아래(채팅 흐름 안)에 둔다 */
+.start-chips{display:flex;flex-wrap:wrap;gap:6px;margin:-8px 0 18px}.start-chips.list{flex-direction:column;align-items:stretch;gap:6px}.start-chips.list .chip{text-align:left}.start-chips .chip{border-radius:14px}
