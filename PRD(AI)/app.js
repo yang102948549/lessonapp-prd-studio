@@ -103,6 +103,7 @@ function renderChips() {
   const root = $('chips'); root.replaceChildren();
   if (guideActive()) return;
   if (state.start !== 'done') return;
+  if (state.focus === 'kind') return;
   if (busy) { for (let i = 0; i < 3; i++) { const s = document.createElement('span'); s.className = 'chip skeleton'; root.append(s); } return; }
   state.chips.forEach(text => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = text; b.title = '입력창에 담기'; b.onclick = () => useChip(text); root.append(b); });
 }
@@ -305,9 +306,8 @@ function send(text) {
   if (/AIza[\w-]{20,}/.test(text) || (apiKey && text.includes(apiKey))) { $('chat-input').value = ''; needKey('API 키는 대화가 아니라 이 입력란에 넣어 주세요.'); return false; }
   if (state.start === 'standards') { $('chat-notice').textContent = ''; answerStandards(text); return true; }
   if (state.start === 'school' || state.start === 'grades') { const r = startFromText(text); return r === true; }
-  if (state.start === 'lesson') { answerLesson(text); return true; }
   if (!apiKey) { needKey('대화를 시작하려면 Gemini API 키를 연결해 주세요. 아래 안내를 따라 발급받을 수 있어요.'); return false; }
-  if (state.start === 'kind') state.start = 'done';
+  if (state.start === 'lesson') { state.start = 'done'; state.doc.direction = redact(text).trim(); }
   state.messages.push({role:'user', text:redact(text)}); state.chips = []; persist(); askAI(); return true;
 }
 /* 교육과정 성취기준 안내: AI가 학년·교과를 물을 차례(처음 포함)에는 칩 대신 채팅 안에서 성취기준을 검색해 고른다 */
@@ -319,14 +319,12 @@ const START_Q = {
   school: '어느 학교의 수업을 준비하고 계신가요?',
   grades: '어떤 학년이 함께하나요? 여러 학년을 고를 수 있어요.',
   standards: '수업할 교육과정 성취기준을 골라 주세요. 성취기준을 체크하면 아래 입력란에 원문이 채워지고, 체크를 풀면 사라져요. 고쳐서 보내도 되고, 성취기준 없이 단원·주제를 직접 적어도 돼요.',
-  lesson: '이 성취기준으로 어떤 수업을 하고 싶으세요? 학생들이 무엇을 하고, 수업의 어느 순간에 웹앱을 쓰고 싶은지 편하게 말씀해 주세요. 이 이야기가 웹앱의 기본 방향이 돼요. 아래 예시를 눌러 고쳐 써도 좋아요.',
-  kind: '어떤 형태의 웹앱으로 만들고 싶으세요? 가까운 것을 모두 고르고 "선택 완료"를 누르세요. 입력란에 말로 적어도 돼요. 이 답부터는 AI가 함께 구체화해 드려요.'
+  lesson: '이 성취기준으로 어떤 수업을 하고 싶으세요? 학생들이 무엇을 하고, 수업의 어느 순간에 웹앱을 쓰고 싶은지 편하게 말씀해 주세요. 이 이야기가 웹앱의 기본 방향이 돼요. 아래 예시를 눌러 고쳐 써도 좋고, 여기서부터는 AI가 계획 지도 순서대로 함께 구체화해 드려요.'
 };
 const KIND_OPTIONS = Planning.options('kind', {}).map(o => typeof o === 'string' ? o : (o.label || o.value));
-let kindPick = new Set();
 const SCHOOLS = ['초등학교', '중학교', '고등학교'];
 const LESSON_CHIPS = ['학생이 직접 조작하며 개념을 발견하는 수업이에요', '배운 내용을 퀴즈·게임으로 연습하고 확인하고 싶어요', '토의하며 서로 생각을 나누는 활동이에요', '자료를 읽고 근거를 찾아 설명하는 활동이에요', '아직 막연해요. 이 성취기준에 어울리는 수업을 추천해 주세요'];
-let gradePick = new Set();
+let gradePick = new Set(), curSubjects = new Map();
 const gradeNames = () => Array.from({length: /^초/.test(state.school || '') ? 6 : 3}, (_, i) => `${i + 1}학년`);
 function localAsk(step) { state.messages.push({role:'assistant', local:true, text:START_Q[step]}); }
 function ensureStart() { if (state.start === 'school' && !state.messages.length) { localAsk('school'); persist(); } }
@@ -341,24 +339,23 @@ function answerGrades(list) {
 }
 function answerStandards(text) {
   state.doc.idea = redact(text).trim(); state.messages.push({role:'user', text:redact(text)});
+  if (curSubjects.size) state.doc.subjects = [...new Set(curSubjects.values())].join(', '); curSubjects = new Map();
   if (curHandle) curHandle.reset(); toStep('lesson');
 }
-function answerLesson(text) {
-  state.doc.direction = redact(text).trim(); state.messages.push({role:'user', text:redact(text)}); kindPick = new Set(); toStep('kind');
-}
 function renderStartChips(root) {
-  if (!['school', 'grades', 'lesson', 'kind'].includes(state.start)) return false;
-  const box = document.createElement('div'); box.className = 'start-chips' + (['lesson', 'kind'].includes(state.start) ? ' list' : ''); root.append(box);
+  const inAI = state.start === 'done' && state.focus === 'kind' && state.messages.at(-1)?.role === 'assistant' && !state.messages.at(-1).error;
+  if (!['school', 'grades', 'lesson'].includes(state.start) && !inAI) return false;
+  const box = document.createElement('div'); box.className = 'start-chips' + (state.start === 'school' || state.start === 'grades' ? '' : ' list'); root.append(box);
   const chip = (label, onclick, pressed) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = label; if (pressed !== undefined) b.setAttribute('aria-pressed', String(pressed)); b.onclick = onclick; box.append(b); return b; };
-  const toggle = (set, v) => { set.has(v) ? set.delete(v) : set.add(v); const y = $('chat-scroll').scrollTop; render(); $('chat-scroll').scrollTop = y; };
+  const input = $('chat-input');
   if (state.start === 'school') SCHOOLS.forEach(x => chip(x, () => answerSchool(x)));
   else if (state.start === 'grades') {
-    gradeNames().forEach(g => chip(g, () => toggle(gradePick, g), gradePick.has(g)));
-    if (gradePick.size) chip('선택 완료', () => answerGrades(gradeNames().filter(g => gradePick.has(g)))).classList.add('chip-done');
+    const sync = () => { input.value = gradeNames().filter(g => gradePick.has(g)).join(', '); input.focus(); };
+    gradeNames().forEach(g => { const b = chip(g, () => { gradePick.has(g) ? gradePick.delete(g) : gradePick.add(g); b.setAttribute('aria-pressed', String(gradePick.has(g))); sync(); }, gradePick.has(g)); });
   } else if (state.start === 'lesson') LESSON_CHIPS.forEach(t => chip(t, () => useChip(t)));
-  else {
-    KIND_OPTIONS.forEach(k => chip(k, () => toggle(kindPick, k), kindPick.has(k)));
-    if (kindPick.size) chip(`선택 완료 (${kindPick.size}개)`, () => send(`웹앱 형태는 ${KIND_OPTIONS.filter(k => kindPick.has(k)).join(' / ')} 쪽으로 만들고 싶어요.`)).classList.add('chip-done');
+  else { /* AI가 앱의 형태를 물을 차례: 고정 선택지를 누르면 입력란에 줄이 들어가고, 다시 누르면 빠진다 */
+    const has = k => input.value.split('\n').includes(`- ${k}`);
+    KIND_OPTIONS.forEach(k => { const b = chip(k, () => { const lines = input.value.split('\n').filter(l => l.trim() && l !== `- ${k}`); if (!has(k)) lines.push(`- ${k}`); input.value = lines.join('\n'); input.dispatchEvent(new Event('input')); input.focus(); b.setAttribute('aria-pressed', String(has(k))); }, has(k)); });
   }
   return true;
 }
@@ -378,7 +375,7 @@ function guideCard() {
   const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'text-button'; skip.textContent = '직접 입력할게요';
   skip.onclick = () => { curDismissed = true; render(); };
   act.append(skip); curEl.append(h, sub, body, act);
-  curHandle = Curriculum.mount(body, {base: '../', school: state.school, grades: state.grades, onChange: (st, on) => Curriculum.syncInput($('chat-input'), st, on)});
+  curHandle = Curriculum.mount(body, {base: '../', school: state.school, grades: state.grades, onChange: (st, on) => { const k = st.id + '|' + st.course; on ? curSubjects.set(k, st.subject) : curSubjects.delete(k); Curriculum.syncInput($('chat-input'), st, on); }});
   return curEl;
 }
 $('save-status').onclick = () => panel('settings');
@@ -391,7 +388,7 @@ function download(blob, name) { const url = URL.createObjectURL(blob), a = docum
 $('download-doc').onclick = () => download(new Blob([docText()], {type:'text/markdown;charset=utf-8'}), (currentProject().name.replace(/[\\/:*?"<>|]/g, '') || 'PRD') + '-PRD.md');
 
 /* ---------- 프로젝트 ---------- */
-function resetView() { gradePick = new Set(); kindPick = new Set(); curEl = null; editingId = ''; curDismissed = false; if (curHandle) curHandle.reset(); mapSel = ''; mapSeen = ''; $('chat-input').value = ''; $('chat-notice').textContent = ''; $('detail-panel').classList.remove('mobile-open'); }
+function resetView() { gradePick = new Set(); curSubjects = new Map(); curEl = null; editingId = ''; curDismissed = false; if (curHandle) curHandle.reset(); mapSel = ''; mapSeen = ''; $('chat-input').value = ''; $('chat-notice').textContent = ''; $('detail-panel').classList.remove('mobile-open'); }
 function switchProject(id) { if (busy || id === currentId) return; persist(); currentId = id; state = loadState(currentProject().state); resetView(); persist(); render(); scrollChat(); }
 function newProject() {
   if (busy) return; if (projects.length >= MAX_PROJECTS) { toast(`프로젝트는 최대 ${MAX_PROJECTS}개까지 저장할 수 있어요.`); return; }
