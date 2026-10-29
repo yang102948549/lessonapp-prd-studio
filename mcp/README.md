@@ -6,21 +6,32 @@
 
 ## 설치
 
-Claude Code:
+npm에 올리지 않고 GitHub 저장소에서 바로 설치합니다. Node 18 이상이 필요합니다.
+
+**AI에게 맡기기(가장 쉬움)** — Claude Code나 Cursor에 이렇게 말하세요.
+
+> https://github.com/yang102948549/lessonapp-prd-studio 의 `mcp` 폴더를 MCP 서버로 설치해 줘
+
+**직접 설치하기**
 
 ```
-claude mcp add lessonapp-prd -- npx -y lessonapp-prd-mcp
+git clone https://github.com/yang102948549/lessonapp-prd-studio.git
+cd lessonapp-prd-studio/mcp
+npm install
+claude mcp add lessonapp-prd -- node "$(pwd)/bin/server.mjs"
 ```
 
-Claude Desktop 등 다른 클라이언트는 설정 파일에 다음을 추가합니다.
+Claude Desktop 등 다른 클라이언트는 설정 파일에 다음을 추가합니다(경로는 내려받은 위치로).
 
 ```json
 {
   "mcpServers": {
-    "lessonapp-prd": { "command": "npx", "args": ["-y", "lessonapp-prd-mcp"] }
+    "lessonapp-prd": { "command": "node", "args": ["/내려받은/경로/lessonapp-prd-studio/mcp/bin/server.mjs"] }
   }
 }
 ```
+
+설치 뒤 AI 도구를 다시 시작하면 도구가 보입니다. 업데이트는 `git pull` 후 `npm install`입니다.
 
 ## 도구
 
@@ -32,7 +43,14 @@ Claude Desktop 등 다른 클라이언트는 설정 파일에 다음을 추가�
 | `get_planning_questions` | 지금까지의 답에 맞는 다음 기획 질문과 선택지 |
 | `build_prd` | 답과 성취기준 코드로 PRD 초안(마크다운) 생성. 빠진 핵심 항목과 충돌도 알려 줌 |
 
-## 사용 예
+## 이럴 때 쓰세요
+
+1. **PRD부터 앱까지 한 대화에서** — "5학년 과학 지층 성취기준으로 방탈출 퀴즈 앱 만들어 줘"라고 하면 AI가 성취기준을 찾고, 필요한 질문을 한두 개씩 하고, PRD를 만든 뒤 바로 코드를 만듭니다. 사이트에서 PRD를 복사해 붙이는 단계가 없습니다.
+2. **성취기준 코드 확인** — "지층 단원 성취기준이 뭐였지?"처럼 수업을 준비하다 바로 원문을 확인합니다. 앱을 만들지 않아도 쓸 수 있습니다.
+3. **같은 틀로 함께 기획** — 교과 협의회나 학년 팀이 같은 질문 틀로 PRD를 써서 서로 검토하기 쉽습니다.
+4. **이미 만든 아이디어 점검** — 기존 아이디어를 주고 "빠진 핵심 항목과 충돌을 찾아 줘"라고 하면 `build_prd`가 알려 줍니다.
+
+예시 프롬프트:
 
 > 초등학교 5학년 수학 수업에서 쓸 도구를 기획하고 싶어. 혼합 계산 성취기준을 찾아서 PRD 초안까지 만들어 줘.
 

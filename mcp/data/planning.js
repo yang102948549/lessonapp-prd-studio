@@ -149,7 +149,8 @@ globalThis.Planning = (() => {
     step('school','학교급',0,'어느 학교의 수업을 준비하고 계신가요?','학교급을 선택하면 해당 학년이 나타나요.',['초등학교','중학교','고등학교'],{placeholder:'예: 초등학교 5, 6학년이 함께 참여해요'}),
     step('grades','대상 학년',0,'어떤 학년이 함께하나요?','복수 학년을 선택할 수 있어요. 선택 후 완료를 눌러 주세요.',[],{multi:true,placeholder:'예: 5학년과 6학년'}),
     step('subjects','과목',0,'어떤 과목의 수업인가요?','여러 과목을 고르면 과목별 활동 아이디어를 함께 보여드려요.',Object.keys(activities).concat('기타 · 직접 입력'),{multi:true,placeholder:'목록에 없는 과목도 입력하세요. 예: 환경, 인공지능 기초'}),
-    step('idea','단원과 주제',0,'어떤 내용으로 수업하려고 하나요?','단원·주제와 학생들이 어려워하는 부분을 알려주세요. 교과서나 성취기준은 알고 계신 경우에만 적어 주세요.',[],{placeholder:'예: 인권 침해의 원인을 개인 행동과 공동체의 환경에서 함께 살펴보는 수업'}),
+    step('idea','교육과정 성취기준',0,'어떤 성취기준으로 수업하시나요?','낱말을 검색하거나 학년군·교과를 골라 성취기준을 체크하면 원문이 채팅 입력란에 채워져요. 고쳐서 전송하세요. 성취기준 없이 단원·주제를 직접 적어도 돼요.',[],{placeholder:'예: [6사03-01] 인권의 의미와 중요성을 이해하고…'}),
+    step('direction','수업의 기본 방향',0,'이 성취기준으로 어떤 수업을 하고 싶으세요?','학생들이 무엇을 하고, 수업의 어느 순간에 웹앱을 쓰고 싶은지 편하게 알려 주세요. 이 답이 웹앱의 기본 방향이 돼요. 선택지를 고쳐서 써도 좋아요.',['학생이 직접 조작하며 개념을 발견하는 수업','배운 내용을 퀴즈·게임으로 연습하고 확인하는 수업','토의하며 서로 생각을 나누는 수업','자료를 읽고 근거를 찾아 설명하는 수업','모둠이 함께 결과물을 만들어 공유하는 수업','아직 막연해요. 이 성취기준에 어울리는 수업을 추천해 주세요'],{multi:true,placeholder:'예: 인권 침해 사례를 읽고 원인을 개인과 환경으로 나눠 보는 활동을 하고 싶어요'}),
     step('stage','수업 단계',0,'이 앱은 수업의 어느 장면에서 쓰나요?','한 가지 장면에 집중할수록 앱이 단단해져요. 가장 중심이 되는 장면 하나를 고르세요.',['도입 · 사전 지식을 확인하고 흥미를 이끌어 냄','탐구 · 조작하고 관찰하며 직접 알아냄','협력 · 모둠이 함께 토의하고 공동 결과물을 만듦','공유 · 결과물을 보여 주고 피드백을 주고받음','정리 · 복습하고 형성평가·자기 점검을 함']),
     step('objective','배움의 목표',0,'활동을 마친 학생이 무엇을 할 수 있으면 좋을까요?','주제에 맞는 문장으로 덧붙이면 더 좋아요. 평가 점수보다 활동에서 일어날 배움을 정합니다.',['자료에서 근거를 찾아 설명하기','서로 다른 관점을 비교하고 생각 수정하기','원리나 규칙을 발견하고 적용하기','여러 해결 방법을 비교하고 대안 제안하기','생각을 결과물로 표현하고 개선하기','배운 내용을 생활 속 실천과 연결하기'],{multi:true}),
 
@@ -360,7 +361,7 @@ globalThis.Planning = (() => {
   const NONE={rules:'이동 제한 없음 · 언제든 자유롭게 이동',feedback:'별도 안내 없이 학생이 스스로 확인',design:'특별한 요구 없음 · 기본 스타일로',visual:'특별한 요구 없음 · 기본 스타일로',exclusions:'추가로 고려할 기능 없음 · 지금 정한 기능만',materials:'별도 자료 없음 · 교사가 말로 안내',story:'별도 이야기 없이 탐구 질문으로 시작'};
   function options(id,answers){const list=refineOptions(id,answers,baseOptions(id,answers));const none=NONE[id];if(!none||list.some(o=>lab(o)===none))return list;return [...list,list.length&&typeof list[0]!=='string'?{label:none,group:'공통',value:none}:none];}
   const sectionDefs=[
-    ['기본 수업 정보',['project','school','grades','subjects','idea','stage','objective','duration']],
+    ['기본 수업 정보',['project','school','grades','subjects','idea','direction','stage','objective','duration']],
     ['사용 환경 및 접속 방식',['participants','unit','devices','identity','network','roles']],
     ['활동 구성·실행 방식과 진행 규칙',['kind','detail','activity','method','story','materials','flow','control','rules','feedback']],
     ['핵심 구현 기능: 교사 화면과 학생 화면',['teacher','teacherView','interaction','media','levels','input','output','features']],
@@ -370,7 +371,7 @@ globalThis.Planning = (() => {
   ];
   function visibleSteps(answers){return steps.filter(s=>!s.when||s.when(answers));}
   function sections(answers){return sectionDefs.map(([title,ids])=>[title,ids.filter(id=>!stepById(id).when||stepById(id).when(answers)).map(id=>{const v=value(answers,id);return `### ${stepById(id).title}\n${v?v+(id==='stack'&&!/^미정/.test(v)?'\n'+stackText(answers):''):'[미정] 질문에 답하거나 AI 제안을 검토해 주세요.'}`;}).join('\n\n')]);}
-  function checks(answers){const ids=['idea','objective','activity','method','materials','flow','control','rules','feedback','interaction','input','output','participants','identity','results','aiuse','stack','acceptance'];return ids.map(id=>({id,label:steps.find(s=>s.id===id).title,done:!!value(answers,id)&&!/^미정/.test(value(answers,id))}));}
+  function checks(answers){const ids=['idea','direction','objective','activity','method','materials','flow','control','rules','feedback','interaction','input','output','participants','identity','results','aiuse','stack','acceptance'];return ids.map(id=>({id,label:steps.find(s=>s.id===id).title,done:!!value(answers,id)&&!/^미정/.test(value(answers,id))}));}
   function conflicts(answers){const v=id=>val(answers,id);const issues=[];const rt=isRealtime(answers),shared=needsShare(answers),ai=AI_RE.test(v('aiuse')),stack=stackByLabel(answers.stack);
     if(/구글 계정으로 로그인/.test(v('identity'))&&/구글 계정에 제한/.test(v('network')))issues.push('학생 구글 계정에 제한이 있는데 구글 로그인을 쓰려고 해요. 별명·코드 방식도 검토해 주세요.');
     if(/오프라인/.test(v('network'))&&(shared||rt))issues.push('인터넷 없이 써야 하는데 결과를 모으거나 실시간으로 공유하려고 해요. 하나를 정해 주세요.');
@@ -390,8 +391,8 @@ globalThis.Planning = (() => {
   }
   function labeledAnswers(answers){return steps.filter(s=>answers[s.id]&&(!s.when||s.when(answers))).map(s=>`- ${s.title}: ${value(answers,s.id)}${s.id==='stack'&&!/^미정/.test(value(answers,s.id))?'\n'+stackText(answers):''}`).join('\n')||'(아직 정한 답변 없음)';}
   function coachPrompt(answers,id,request,proposal=false){const s=steps.find(s=>s.id===id);return `당신은 수업 웹앱 설계 동료다. 한국어로 대화한다. 사용자는 아래의 수업을 설계하고 있고, 지금까지 정한 답변과 일관되게 도와야 한다.\n[지금까지 정한 수업 정보]\n${labeledAnswers(answers)}\n\n[지금 정하는 질문] ${s?.question||'최종 검토'}\n[활동 분기] ${selectedBranches(answers).map(b=>b.label).join(', ')}\n\n규칙: 위 과목·학교급·학년·단원 주제·배움의 목표·활동에 반드시 맞는 내용만 쓴다. 다른 과목에도 그대로 쓸 수 있는 일반적인 답을 하지 않는다. 이미 정한 답변과 충돌하면 그 점을 알린다. 사용자가 정하지 않은 내용은 [제안]이라고 표시한다. 평가 요소를 추천하는 요청으로 오해하지 않는다. 교과서나 성취기준은 추측하지 않는다.\n${proposal?'현재 질문에 들어갈 구체적인 답변 초안 1개만 작성한다. 활동·주제를 연결하고 실제 문구·개수·조건을 필요한 만큼 제안한다. 다른 단계로 진행하거나 전체 PRD를 쓰지 않는다. 마크다운 기호 없이 순수한 문장으로만, 간결하게 쓴다. JSON {"draft":"초안"} 하나만 출력한다.':'사용자의 질문에 간결하게 설명하고 가능한 선택지를 비교한다. 답변을 확정하거나 자동으로 다음 단계로 넘어가지 않는다. answer에는 마크다운 표·제목·구분선 없이 짧은 문단과 "- " 목록만 쓰고 600자 이내로 한다. choices에는 사용자가 현재 질문의 답변으로 바로 고를 수 있는 짧은 문장 3~4개를 쓴다(질문 형태 금지). JSON {"answer":"...","choices":["...","..."]} 하나만 출력한다.'}\n사용자 메시지: ${request}`;}
-  function migrate(saved){if(!saved||!saved.answers||!Array.isArray(saved.messages))return null;const next={...saved,version:3};if(next.answers&&/제외/.test(JSON.stringify(next.answers.exclusions||'')))next.answers={...next.answers,exclusions:undefined};
-    if(saved.version!==3){const ids=new Set(steps.map(s=>s.id));next.answers=Object.fromEntries(Object.entries(saved.answers).filter(([k])=>ids.has(k)));const open=steps.findIndex(s=>(!s.when||s.when(next.answers))&&!next.answers[s.id]);next.step=open<0?steps.length:open;next.draftStale=!!saved.draft;}
-    else next.step=Math.min(Math.max(Number(saved.step)||0,0),steps.length);return next;}
+  function migrate(saved){if(!saved||!saved.answers||!Array.isArray(saved.messages))return null;const next={...saved,version:4};if(next.answers&&/제외/.test(JSON.stringify(next.answers.exclusions||'')))next.answers={...next.answers,exclusions:undefined};
+    if(saved.version<3){const ids=new Set(steps.map(s=>s.id));next.answers=Object.fromEntries(Object.entries(saved.answers).filter(([k])=>ids.has(k)));const open=steps.findIndex(s=>(!s.when||s.when(next.answers))&&!next.answers[s.id]);next.step=open<0?steps.length:open;next.draftStale=!!saved.draft;}
+    else{const at=Number(saved.step)||0;const dir=steps.findIndex(s=>s.id==='direction');next.step=Math.min(Math.max(saved.version===3&&at>=dir?at+1:at,0),steps.length);}return next;}
   return {steps,visibleSteps,groups,parts,sectionDefs,options,sections,checks,conflicts,coachPrompt,subjectsFor,migrate,selectedBranches,recommend,stackText};
 })();
