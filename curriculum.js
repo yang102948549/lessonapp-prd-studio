@@ -117,7 +117,7 @@ globalThis.Curriculum = (() => {
           chip.append(el('b', '', s.id), x); tray.append(chip);
         });
         tray.hidden = !picked.size;
-        count.textContent = picked.size ? `${picked.size}개 선택` : '성취기준을 눌러 고르세요';
+        count.textContent = picked.size ? `${picked.size}개 선택` : ''; foot.hidden = !picked.size;
       };
       const paint = () => {
         list.replaceChildren();
