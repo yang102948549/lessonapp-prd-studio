@@ -1,7 +1,7 @@
 const $ = id => document.getElementById(id);
 const PROJECTS_KEY = 'oni.prdai.projects.v1', DEFAULT_NAME = '나의 수업 웹앱', MAX_PROJECTS = 20;
 const SECTIONS = Prompt.sections;
-const fresh = () => ({version:1, messages:[], doc:{}, chips:[], ready:false, focus:''});
+const fresh = () => ({version:1, messages:[], doc:{}, chips:[], ready:false, focus:'', start:'school', grades:[]});
 let projects = [], currentId = '', state = fresh(), apiKey = '', model = 'gemini-3.8-flash', modelList = [], busy = false, toastTimer, editingId = '', mapOpen = new Set(['T0', 'G0']), mapSel = '', mapSeen = '';
 const uid = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -13,7 +13,11 @@ function migrateDoc(st) {
   Object.entries(st.doc || {}).forEach(([k, v]) => { const id = known.has(k) ? k : (OLD_IDS[k] || 'extra'); if (typeof v === 'string' && v.trim()) doc[id] = doc[id] ? doc[id] + '\n\n' + v : v; });
   st.doc = doc; if (st.focus && !known.has(st.focus)) st.focus = OLD_IDS[st.focus] || ''; return st;
 }
-const loadState = raw => migrateDoc({...fresh(), ...(raw && typeof raw === 'object' ? raw : {})});
+const loadState = raw => {
+  const st = migrateDoc({...fresh(), ...(raw && typeof raw === 'object' ? raw : {})});
+  if (!raw || typeof raw !== 'object' || !raw.start) st.start = st.messages.length ? 'done' : 'school'; /* 이미 대화 중인 예전 프로젝트는 시작 질문을 건너뜀 */
+  return st;
+};
 
 try {
   const all = JSON.parse(localStorage.getItem(PROJECTS_KEY) || 'null');
@@ -97,6 +101,7 @@ function renderMessages() {
 function renderChips() {
   const root = $('chips'); root.replaceChildren();
   if (guideActive()) return;
+  if (!busy && renderStartChips(root)) return;
   if (busy) { for (let i = 0; i < 3; i++) { const s = document.createElement('span'); s.className = 'chip skeleton'; root.append(s); } return; }
   state.chips.forEach(text => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = text; b.title = '입력창에 담기'; b.onclick = () => useChip(text); root.append(b); });
 }
@@ -197,6 +202,7 @@ function updateConnection() {
   $('mode-text').textContent = apiKey ? 'Gemini 연결됨' : 'AI 연결 필요 · 설정에서 API 키를 입력해 주세요';
 }
 function render(flashIds) {
+  ensureStart();
   renderProjects(); renderMap(); renderMessages(); renderChips(); renderDocument(flashIds); updateConnection();
   $('send').disabled = busy; $('chat-input').disabled = busy; $('new-project').disabled = busy;
 }
@@ -296,12 +302,59 @@ function send(text) {
   if (busy) return false;
   text = text.trim(); if (!text) return false;
   if (/AIza[\w-]{20,}/.test(text) || (apiKey && text.includes(apiKey))) { $('chat-input').value = ''; needKey('API 키는 대화가 아니라 이 입력란에 넣어 주세요.'); return false; }
+  if (state.start === 'standards') { $('chat-notice').textContent = ''; answerStandards(text); return true; }
+  if (state.start === 'school' || state.start === 'grades') { const r = startFromText(text); return r === true; }
   if (!apiKey) { needKey('대화를 시작하려면 Gemini API 키를 연결해 주세요. 아래 안내를 따라 발급받을 수 있어요.'); return false; }
+  if (state.start === 'lesson') state.start = 'done';
   state.messages.push({role:'user', text:redact(text)}); state.chips = []; persist(); askAI(); return true;
 }
 /* 교육과정 성취기준 안내: AI가 학년·교과를 물을 차례(처음 포함)에는 칩 대신 채팅 안에서 성취기준을 검색해 고른다 */
 let curEl = null, curHandle = null, curDismissed = false;
-const guideActive = () => !busy && !curDismissed && (['school', 'grades', 'subjects', 'idea'].includes(state.focus) || !state.messages.length);
+const guideActive = () => !busy && !curDismissed && state.start === 'standards';
+
+/* ---------- 시작 질문(AI 호출 전): 학교급 → 학년 → 성취기준 → 어떤 수업인지. 여기까지는 키 없이 진행하고, 수업 구상을 말하면 그때부터 AI가 돕는다 ---------- */
+const START_Q = {
+  school: '어느 학교의 수업을 준비하고 계신가요?',
+  grades: '어떤 학년이 함께하나요? 여러 학년을 고를 수 있어요.',
+  standards: '수업할 교육과정 성취기준을 골라 주세요. 성취기준을 체크하면 아래 입력란에 원문이 채워지고, 체크를 풀면 사라져요. 고쳐서 보내도 되고, 성취기준 없이 단원·주제를 직접 적어도 돼요.',
+  lesson: '이 성취기준으로 어떤 수업을 하고 싶으세요? 학생들이 무엇을 하고, 수업의 어느 순간에 웹앱을 쓰고 싶은지 편하게 말씀해 주세요. 이 이야기가 웹앱의 기본 방향이 되고, 여기서부터는 AI가 함께 구체화해 드려요.'
+};
+const SCHOOLS = ['초등학교', '중학교', '고등학교'];
+const LESSON_CHIPS = ['학생이 직접 조작하며 개념을 발견하는 수업이에요', '배운 내용을 퀴즈·게임으로 연습하고 확인하고 싶어요', '토의하며 서로 생각을 나누는 활동이에요', '자료를 읽고 근거를 찾아 설명하는 활동이에요', '아직 막연해요. 이 성취기준에 어울리는 수업을 추천해 주세요'];
+let gradePick = new Set();
+const gradeNames = () => Array.from({length: /^초/.test(state.school || '') ? 6 : 3}, (_, i) => `${i + 1}학년`);
+function localAsk(step) { state.messages.push({role:'assistant', local:true, text:START_Q[step]}); }
+function ensureStart() { if (state.start === 'school' && !state.messages.length) { localAsk('school'); persist(); } }
+function toStep(step) { state.start = step; localAsk(step); if (step === 'standards') { curEl = null; curDismissed = false; } persist(); render(); scrollChat(); }
+function answerSchool(school) {
+  state.school = school; state.grades = []; gradePick = new Set(); state.doc.school = school;
+  state.messages.push({role:'user', text:school}); toStep('grades');
+}
+function answerGrades(list) {
+  state.grades = list; state.doc.grades = list.join(', ');
+  state.messages.push({role:'user', text:list.join(', ')}); toStep('standards');
+}
+function answerStandards(text) {
+  state.doc.idea = redact(text).trim(); state.messages.push({role:'user', text:redact(text)});
+  if (curHandle) curHandle.reset(); toStep('lesson');
+}
+function renderStartChips(root) {
+  const chip = (label, onclick, pressed) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = label; if (pressed !== undefined) b.setAttribute('aria-pressed', String(pressed)); b.onclick = onclick; root.append(b); return b; };
+  if (state.start === 'school') { SCHOOLS.forEach(x => chip(x, () => answerSchool(x))); return true; }
+  if (state.start === 'grades') {
+    gradeNames().forEach(g => chip(g, () => { gradePick.has(g) ? gradePick.delete(g) : gradePick.add(g); render(); }, gradePick.has(g)));
+    if (gradePick.size) chip('선택 완료', () => answerGrades(gradeNames().filter(g => gradePick.has(g)))).classList.add('chip-done');
+    return true;
+  }
+  if (state.start === 'lesson') { LESSON_CHIPS.forEach(t => chip(t, () => useChip(t))); return true; }
+  return false;
+}
+/* 선택지 대신 말로 답했을 때 */
+function startFromText(text) {
+  if (state.start === 'school') { const hit = SCHOOLS.filter(x => text.includes(x.slice(0, 2))); if (hit.length !== 1) { $('chat-notice').textContent = '초등학교·중학교·고등학교 중 하나를 골라 주세요.'; return false; } answerSchool(hit[0]); return true; }
+  if (state.start === 'grades') { const nums = [...new Set((text.match(/\d/g) || []).map(Number))].filter(n => n >= 1 && n <= gradeNames().length); if (!nums.length) { $('chat-notice').textContent = '학년을 골라 주세요. 예: 5학년, 6학년'; return false; } answerGrades(nums.sort().map(n => `${n}학년`)); return true; }
+  return null;
+}
 function guideCard() {
   if (curEl) return curEl;
   curEl = document.createElement('div'); curEl.className = 'cur-guide';
@@ -312,7 +365,7 @@ function guideCard() {
   const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'text-button'; skip.textContent = '직접 입력할게요';
   skip.onclick = () => { curDismissed = true; render(); };
   act.append(skip); curEl.append(h, sub, body, act);
-  curHandle = Curriculum.mount(body, {base: '../', onChange: (st, on) => Curriculum.syncInput($('chat-input'), st, on)});
+  curHandle = Curriculum.mount(body, {base: '../', school: state.school, grades: state.grades, onChange: (st, on) => Curriculum.syncInput($('chat-input'), st, on)});
   return curEl;
 }
 $('save-status').onclick = () => panel('settings');
@@ -325,7 +378,7 @@ function download(blob, name) { const url = URL.createObjectURL(blob), a = docum
 $('download-doc').onclick = () => download(new Blob([docText()], {type:'text/markdown;charset=utf-8'}), (currentProject().name.replace(/[\\/:*?"<>|]/g, '') || 'PRD') + '-PRD.md');
 
 /* ---------- 프로젝트 ---------- */
-function resetView() { editingId = ''; curDismissed = false; if (curHandle) curHandle.reset(); mapSel = ''; mapSeen = ''; $('chat-input').value = ''; $('chat-notice').textContent = ''; $('detail-panel').classList.remove('mobile-open'); }
+function resetView() { gradePick = new Set(); curEl = null; editingId = ''; curDismissed = false; if (curHandle) curHandle.reset(); mapSel = ''; mapSeen = ''; $('chat-input').value = ''; $('chat-notice').textContent = ''; $('detail-panel').classList.remove('mobile-open'); }
 function switchProject(id) { if (busy || id === currentId) return; persist(); currentId = id; state = loadState(currentProject().state); resetView(); persist(); render(); scrollChat(); }
 function newProject() {
   if (busy) return; if (projects.length >= MAX_PROJECTS) { toast(`프로젝트는 최대 ${MAX_PROJECTS}개까지 저장할 수 있어요.`); return; }

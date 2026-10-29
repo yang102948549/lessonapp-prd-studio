@@ -1,7 +1,7 @@
 const $ = id => document.getElementById(id);
 const STORAGE = 'lessonapp.workspace.v1', PROJECTS_KEY = 'oni.projects.v1', DEFAULT_NAME = '나의 수업 웹앱', MAX_PROJECTS = 20, QUOTA_BYTES = 5*1024*1024;
 const definitions = Planning.steps;
-const fresh = () => ({version:3,step:0,answers:{},messages:[],draft:'',previousDraft:'',extraSubjects:[]});
+const fresh = () => ({version:4,step:0,answers:{},messages:[],draft:'',previousDraft:'',extraSubjects:[]});
 let state = fresh(), projects = [], currentId = '';
 const uid=()=>'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const loadState=raw=>{try{const saved=Planning.migrate(raw);return saved?{...fresh(),...saved}:fresh();}catch{return fresh();}};
@@ -104,7 +104,7 @@ function renderProjects(){renderStorage();
 let curKey='',curHandle=null;
 function renderCurCard(def){const card=$('cur-card');const show=!!(def&&def.id==='idea');card.hidden=!show;if(!show){curKey='';card.replaceChildren();return;}
   if(curKey===def.id)return;curKey=def.id;card.replaceChildren();card.className='cur-guide';
-  const body=mk('div','');card.append(mk('h3','','교육과정에서 수업 고르기'),mk('p','cur-sub','낱말을 검색하거나 학년군·교과를 골라 성취기준을 선택하세요. 고르면 채팅 입력란에 원문이 채워지고, 체크를 풀면 사라져요. 고쳐서 전송하세요.'),body);
+  const body=mk('div','');card.append(mk('h3','','교육과정에서 수업 고르기'),mk('p','cur-sub','낱말을 검색하거나 학년군·교과를 골라 성취기준을 선택하세요. 고르면 채팅 입력란에 원문이 채워지고, 체크를 풀면 사라져요. 고쳐서 전송하면 다음 질문(어떤 수업을 할지)으로 넘어가요.'),body);
   const a=state.answers;
   curHandle=Curriculum.mount(body,{school:a.school,grades:a.grades,subjects:Array.isArray(a.subjects)?a.subjects:[a.subjects].filter(Boolean),
     onChange:(st,on)=>Curriculum.syncInput($('chat-input'),st,on)});}
@@ -208,8 +208,8 @@ function render(){
 
   $('chat-input').placeholder=chatMode==='coach'?'예: 이 활동에 어떤 자료가 필요할까요? 두 방식을 비교해 주세요.':def?def.placeholder:'기획서에서 바꾸고 싶은 점을 이야기해 주세요';
   $('continue').hidden=!def?.multi;$('continue').disabled=!selected.size||busy;
-  $('skip-step').hidden=!def||state.step<3;$('skip-step').disabled=busy;
-  $('ai-suggest').hidden=!def||state.step<3;$('ai-suggest').disabled=busy;
+  $('skip-step').hidden=!def||state.step<5;$('skip-step').disabled=busy;
+  $('ai-suggest').hidden=!def||state.step<5;$('ai-suggest').disabled=busy;
   $('selection-note').textContent=def?.multi?'여러 개 선택 가능 · 직접 입력한 내용도 함께 반영해요':'';
   $('previous-answer').hidden=!def||!answerText(def.id);$('clear-answer').hidden=!def||!answerText(def.id);$('clear-answer').disabled=busy;$('previous-answer').textContent=def&&answerText(def.id)?`이전에 정한 내용: ${answerText(def.id)}`:'';
   let options=def?.id==='grades'?gradeOptions():Planning.options(def?.id,state.answers);if(def?.id==='subjects')options=[...options,...state.extraSubjects];
