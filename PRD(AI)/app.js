@@ -306,20 +306,17 @@ function guideCard() {
   if (curEl) return curEl;
   curEl = document.createElement('div'); curEl.className = 'cur-guide';
   const h = document.createElement('h3'); h.textContent = '교육과정에서 수업 고르기';
-  const sub = document.createElement('p'); sub.className = 'cur-sub'; sub.textContent = '낱말을 검색하거나 학년군·교과를 골라 성취기준을 선택하세요. 고른 원문이 바로 단원과 주제의 답이 돼요.';
+  const sub = document.createElement('p'); sub.className = 'cur-sub'; sub.textContent = '낱말을 검색하거나 학년군·교과를 골라 성취기준을 선택하세요. 고르면 채팅 입력란에 원문이 채워지고, 체크를 풀면 사라져요. 고쳐서 전송하세요.';
   const body = document.createElement('div');
   const act = document.createElement('div'); act.className = 'cur-guide-actions';
   const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'text-button'; skip.textContent = '직접 입력할게요';
   skip.onclick = () => { curDismissed = true; render(); };
   act.append(skip); curEl.append(h, sub, body, act);
-  curHandle = Curriculum.mount(body, {base: '../', applyLabel: '이 성취기준으로 이야기하기', onApply: r => {
-    if (send(`수업 교육과정은 아래 성취기준이에요. 사용 수업과 학습 목표에 반영해 주세요.
-${Curriculum.format(r)}`)) curHandle.reset();
-  }});
+  curHandle = Curriculum.mount(body, {base: '../', onChange: (st, on) => Curriculum.syncInput($('chat-input'), st, on)});
   return curEl;
 }
 $('save-status').onclick = () => panel('settings');
-$('composer').onsubmit = e => { e.preventDefault(); if (send($('chat-input').value)) $('chat-input').value = ''; };
+$('composer').onsubmit = e => { e.preventDefault(); if (send($('chat-input').value)) { $('chat-input').value = ''; if (curHandle) curHandle.reset(); } };
 $('chat-input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('composer').requestSubmit(); } };
 
 const docText = () => '# ' + currentProject().name + ' PRD\n\n> 질문 답변을 정리한 설계 초안입니다. [미정] 항목과 자료 원문을 확인하세요.\n\n' + Prompt.docSections.map(g => `## ${g.title}\n` + g.ids.map(id => `### ${sectionById(id).title}\n${sectionBody(id) || '[미정] 질문에 답하거나 AI 제안을 검토해 주세요.'}`).join('\n\n')).join('\n\n');

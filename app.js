@@ -104,10 +104,10 @@ function renderProjects(){renderStorage();
 let curKey='',curHandle=null;
 function renderCurCard(def){const card=$('cur-card');const show=!!(def&&def.id==='idea');card.hidden=!show;if(!show){curKey='';card.replaceChildren();return;}
   if(curKey===def.id)return;curKey=def.id;card.replaceChildren();card.className='cur-guide';
-  const body=mk('div','');card.append(mk('h3','','교육과정에서 수업 고르기'),mk('p','cur-sub','낱말을 검색하거나 학년군·교과를 골라 성취기준을 선택하세요. 고른 원문이 바로 단원과 주제의 답이 돼요.'),body);
+  const body=mk('div','');card.append(mk('h3','','교육과정에서 수업 고르기'),mk('p','cur-sub','낱말을 검색하거나 학년군·교과를 골라 성취기준을 선택하세요. 고르면 채팅 입력란에 원문이 채워지고, 체크를 풀면 사라져요. 고쳐서 전송하세요.'),body);
   const a=state.answers;
-  curHandle=Curriculum.mount(body,{school:a.school,grades:a.grades,subjects:Array.isArray(a.subjects)?a.subjects:[a.subjects].filter(Boolean),applyLabel:'이 성취기준으로 답하기',
-    onApply:r=>{if(busy)return;if(processText(Curriculum.format(r))!==false)curHandle.reset();}});}
+  curHandle=Curriculum.mount(body,{school:a.school,grades:a.grades,subjects:Array.isArray(a.subjects)?a.subjects:[a.subjects].filter(Boolean),
+    onChange:(st,on)=>Curriculum.syncInput($('chat-input'),st,on)});}
 function renderStackCard(def){const card=$('stack-card');card.hidden=!(def&&def.id==='stack');if(card.hidden)return;card.replaceChildren();
   const r=Planning.recommend(state.answers);const add=(tag,text,cls)=>{const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;card.append(e);return e;};
   add('h3','추천: '+r.label);add('div',r.one);
@@ -287,7 +287,7 @@ function processText(text){const def=definitions[state.step];if(!def){addMessage
   if(def.id==='grades'){const numbers=[...text.matchAll(/[1-6]/g)].map(m=>`${m[0]}학년`);const range=text.match(/([1-6])\s*(?:~|-|부터)\s*([1-6])/);if(range)for(let n=Number(range[1]);n<=Number(range[2]);n++)numbers.push(`${n}학년`);const valid=[...new Set(numbers)].filter(g=>gradeOptions().includes(g));if(!valid.length){$('chat-notice').textContent='해당 학교급의 학년을 선택하거나 숫자로 입력해 주세요. 예: 1, 2학년';return false;}accept(valid);return;}
   if(def.multi){const parts=def.id==='subjects'?text.split(/[,，\n]/).map(s=>s.trim()).filter(Boolean):[text];accept([...new Set([...selected,...parts])]);}else accept(text);
 }
-$('composer').onsubmit=async event=>{event.preventDefault();if(busy)return;const text=$('chat-input').value.trim();if(!text)return;$('chat-notice').textContent='';if(/AIza[\w-]{20,}/.test(text)||(apiKey&&text.includes(apiKey))){$('chat-input').value='';keySettings();$('key-status').textContent='API 키는 대화가 아닌 이 입력란에 넣어 주세요.';return;}if(chatMode==='coach'){if(await coach(text))$('chat-input').value='';}else if(processText(text)!==false)$('chat-input').value='';};
+$('composer').onsubmit=async event=>{event.preventDefault();if(busy)return;const text=$('chat-input').value.trim();if(!text)return;$('chat-notice').textContent='';if(/AIza[\w-]{20,}/.test(text)||(apiKey&&text.includes(apiKey))){$('chat-input').value='';keySettings();$('key-status').textContent='API 키는 대화가 아닌 이 입력란에 넣어 주세요.';return;}if(chatMode==='coach'){if(await coach(text))$('chat-input').value='';}else if(processText(text)!==false){$('chat-input').value='';if(curHandle)curHandle.reset();}};
 $('chat-input').onkeydown=event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();$('composer').requestSubmit();}};
 $('continue').onclick=()=>{if(selected.size)accept([...selected]);};
 $('add-subject').onclick=()=>{const value=$('custom-subject').value.trim();if(!value)return;if(/AIza[\w-]{20,}/.test(value)){toast('API 키는 설정에 입력해 주세요.');return;}if(!state.extraSubjects.includes(value))state.extraSubjects.push(value);selected.add(value);$('custom-subject').value='';persist();render();};

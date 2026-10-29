@@ -64,7 +64,7 @@ globalThis.Curriculum = (() => {
     return {total, items: out};
   }
 
-  /* opts: {school, grades, subjects, base, applyLabel, onApply(result)}. 돌려주는 값: {ready, reset()} */
+  /* opts: {school, grades, subjects, base, onChange(성취기준, 선택됨)}. 선택·해제할 때마다 onChange가 불린다(reset은 부르지 않음). 돌려주는 값: {ready, reset()} */
   function mount(root, opts = {}) {
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
     const field = (label, node) => { const w = el('label', 'cur-field'); w.append(el('span', '', label), node); return w; };
@@ -88,8 +88,7 @@ globalThis.Curriculum = (() => {
       q.type = 'text'; q.className = 'cur-q'; q.placeholder = '낱말로 검색 (예: 분수, 토론, 독일어, 광합성)'; q.autocomplete = 'off'; q.spellcheck = false; q.setAttribute('aria-label', '성취기준 검색');
       const list = el('div', 'cur-list'); list.setAttribute('role', 'group'); list.setAttribute('aria-label', '검색 결과');
       const tray = el('div', 'cur-tray'), foot = el('div', 'cur-foot'), count = el('span', 'cur-count');
-      const apply = el('button', 'primary', opts.applyLabel || '이 성취기준으로 시작'); apply.type = 'button';
-      foot.append(count, apply);
+      foot.append(count);
       const top = el('div', 'cur-row');
       top.append(field('학년군', sBand), field('교과', sSubject), field('단원(영역)', sUnit));
       const search1 = el('div', 'cur-search'); search1.append(q);
@@ -108,17 +107,17 @@ globalThis.Curriculum = (() => {
         fill(sUnit, [...seen], '전체 단원', sUnit.value);
         sUnit.disabled = !sSubject.value;
       };
+      const change = (s, on) => opts.onChange && opts.onChange(s, on);
       const paintTray = () => {
         tray.replaceChildren();
         picked.forEach((s, key) => {
           const chip = el('span', 'cur-chip'); chip.title = s.text;
           const x = el('button', '', '×'); x.type = 'button'; x.setAttribute('aria-label', `${s.id} 선택 취소`);
-          x.onclick = () => { picked.delete(key); paint(); };
+          x.onclick = () => { picked.delete(key); paint(); change(s, false); };
           chip.append(el('b', '', s.id), x); tray.append(chip);
         });
         tray.hidden = !picked.size;
         count.textContent = picked.size ? `${picked.size}개 선택` : '성취기준을 눌러 고르세요';
-        apply.disabled = !picked.size;
       };
       const paint = () => {
         list.replaceChildren();
@@ -130,7 +129,7 @@ globalThis.Curriculum = (() => {
           const body = el('span', 'cur-text');
           body.append(el('b', '', s.id), document.createTextNode(' ' + s.text), el('small', '', `${s.band} · ${s.subject}${s.course !== s.subject ? ' · ' + s.course : ''} · ${s.unit}`));
           row.append(el('span', 'cur-mark', on ? '✓' : ''), body);
-          row.onclick = () => { on ? picked.delete(key) : picked.set(key, s); paint(); };
+          row.onclick = () => { on ? picked.delete(key) : picked.set(key, s); paint(); change(s, !on); };
           list.append(row);
         });
         if (!r.total) list.append(el('p', 'cur-hint', '검색 결과가 없어요. 낱말을 줄이거나 필터를 풀어 보세요.'));
@@ -148,7 +147,6 @@ globalThis.Curriculum = (() => {
       sUnit.onchange = refilter;
       q.oninput = refilter;
       q.onkeydown = e => { if (e.key === 'Enter') e.preventDefault(); };
-      apply.onclick = () => opts.onApply && opts.onApply({standards: [...picked.values()]});
       handle.reset = () => { picked.clear(); q.value = ''; limit = 60; paint(); };
     }).catch(e => { status.textContent = e.message; });
     return handle;
@@ -168,5 +166,16 @@ globalThis.Curriculum = (() => {
     }).join('\n');
   }
 
-  return {load, mount, format, bandsFor, search};
+  /* 채팅 입력란에 성취기준 한 줄을 넣고 뺀다. 사용자가 고친 다른 글은 그대로 둔다 */
+  const line = s => `- [${s.id}] ${s.text}`;
+  const isLine = (t, s) => t.startsWith(`- [${s.id}]`);
+  function syncInput(input, s, on) {
+    const lines = input.value.split('\n').filter(t => !isLine(t, s));
+    if (on) lines.push(line(s));
+    input.value = lines.join('\n').trim();
+    input.dispatchEvent(new Event('input', {bubbles: true}));
+    if (on) { input.focus(); input.scrollTop = input.scrollHeight; }
+  }
+
+  return {load, mount, format, line, syncInput, bandsFor, search};
 })();
