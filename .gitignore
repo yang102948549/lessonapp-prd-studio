@@ -2,6 +2,7 @@
 *
 !/.gitignore
 !/index.html
+!/README.md
 !/favicon.svg
 !/styles.css
 !/app.js
@@ -9,6 +10,7 @@
 !/.nojekyll
 !/PRD(AI)/
 !/PRD(AI)/index.html
+!/PRD(AI)/README.md
 !/PRD(AI)/styles.css
 !/PRD(AI)/app.js
 !/PRD(AI)/prompt.js
