@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <title>Oni Studio</title>
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  <link rel="stylesheet" href="styles.css?v=24"><script defer src="../planning.js?v=20261102b"></script><script defer src="prompt.js?v=24"></script><script defer src="../curriculum.js?v=7"></script><script defer src="app.js?v=25"></script>
+  <link rel="stylesheet" href="styles.css?v=25"><script defer src="../planning.js?v=20261102b"></script><script defer src="prompt.js?v=25"></script><script defer src="../curriculum.js?v=7"></script><script defer src="app.js?v=26"></script>
 </head>
 <body>
 <aside class="sidebar">
@@ -24,6 +24,7 @@
       <div class="composer-area">
         <div id="chips" class="chips" aria-label="추천 답변"></div>
         <div id="chat-notice" role="status"></div>
+        <div id="flow-tools" class="flow-tools" hidden><button id="skip-q" type="button" title="지금 질문을 미정으로 두고 다음 질문으로 넘어가요">건너뛰기</button><button id="pick-q" type="button" title="계획 지도에서 답하고 싶은 질문을 골라요">질문 고르기</button><button id="finish-q" type="button" title="남은 질문을 미정으로 두고 기획서를 마무리해요">여기서 마치기</button></div>
         <form id="composer" class="composer">
           <label for="chat-input" class="sr-only">도우미에게 말하기</label>
           <textarea id="chat-input" rows="2" maxlength="6000" placeholder="만들고 싶은 수업 도구를 편하게 이야기해 주세요"></textarea>
@@ -33,7 +34,7 @@
     </section>
     <aside class="detail-panel" id="detail-panel" aria-label="계획 지도, 기획서, 설정">
       <div class="panel-tabs" role="tablist"><button id="map-tab" role="tab" aria-selected="true"><svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 12H12c2 0 3-1 4-4M12 12c2 0 3 1 4 4"/></svg> 계획 지도</button><button id="document-tab" role="tab" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg> 기획서</button><button id="settings-tab" role="tab" aria-selected="false"><svg class="ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg> 설정</button></div>
-      <section id="map-panel" role="tabpanel" aria-labelledby="map-tab"><div class="map-toolbar"><span id="map-summary"></span><span class="map-tools"><button id="map-expand" class="text-button">모두 펼치기</button><button id="map-collapse" class="text-button">현재만 보기</button></span></div><div class="map-legend"><span><i class="lg done"></i>채워짐</span><span><i class="lg current"></i>지금 이야기 중</span><span><i class="lg todo"></i>아직</span></div><div class="map-scroll" id="map-scroll"><div id="map-canvas" class="map-canvas"></div></div><p class="map-help">항목을 누르면 내용이 열리고 바로 고칠 수 있어요. 대화하면 AI가 알아서 채워 줘요</p></section>
+      <section id="map-panel" role="tabpanel" aria-labelledby="map-tab"><div class="map-toolbar"><span id="map-summary"></span><span class="map-tools"><button id="map-expand" class="text-button">모두 펼치기</button><button id="map-collapse" class="text-button">현재만 보기</button></span></div><div class="map-legend"><span><i class="lg done"></i>채워짐</span><span><i class="lg current"></i>지금 이야기 중</span><span><i class="lg todo"></i>아직</span><span><i class="lg skip"></i>미정</span></div><div class="map-scroll" id="map-scroll"><div id="map-canvas" class="map-canvas"></div></div><p class="map-help">항목을 누르면 내용이 열리고 바로 고칠 수 있어요. "이 질문에 답하기"로 순서와 상관없이 답할 수 있어요</p></section>
       <section id="document-panel" role="tabpanel" aria-labelledby="document-tab" hidden>
         <div class="document-toolbar"><span><i class="live-dot"></i> 대화에 따라 실시간으로 채워져요</span></div>
         <div class="document-scroll"><div class="paper"><h2 id="doc-title">나의 수업 웹앱</h2><div class="progress-track"><span id="progress"></span></div><p id="progress-text" class="muted small"></p><div id="prd-preview"></div></div></div>

@@ -126,3 +126,10 @@ main{flex:1;min-width:0;display:flex;flex-direction:column}
 
 /* 시작 질문의 선택지는 질문 바로 아래(채팅 흐름 안)에 둔다 */
 .start-chips{display:flex;flex-wrap:wrap;gap:6px;margin:-8px 0 18px}.start-chips.list{flex-direction:column;align-items:stretch;gap:6px}.start-chips.list .chip{text-align:left}.start-chips .chip{border-radius:14px}
+/* 질문 순서에 묶이지 않게: 건너뛰기, 질문 고르기, 여기서 마치기 */
+.flow-tools{max-width:712px;margin:0 auto 8px;display:flex;flex-wrap:wrap;gap:6px}
+.flow-tools button{font-size:13.5px;padding:6px 12px;border-radius:8px;min-height:36px;background:var(--bg);border:1px solid var(--border);color:var(--fg)}
+.flow-tools button:disabled{opacity:.45;cursor:not-allowed}
+.t-step.skip>.t-row{border-style:dashed;background:transparent}
+.t-step.skip .t-step-btn span{font-style:normal}
+.lg.skip{background:transparent;border-style:dashed;border-color:var(--muted)}

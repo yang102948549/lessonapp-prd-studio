@@ -137,6 +137,8 @@ function renderDocument(flashIds = []) {
 }
 const mk = (tag, cls = '', text = '') => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
 const isFilled = id => !!sectionBody(id);
+const PENDING = '[미정] 나중에 정하기로 함';
+const isPending = id => /^\s*-?\s*\[미정\]/.test(sectionBody(id));
 const sectionById = id => SECTIONS.find(s => s.id === id);
 const currentSection = () => (state.focus && sectionById(state.focus)) ? state.focus : (SECTIONS.find(s => !isFilled(s.id)) || {}).id || '';
 const partOf = id => Prompt.parts.find(p => p.ids.includes(id));
@@ -156,7 +158,7 @@ function renderProjects() {
 function renderMap() {
   const host = $('map-canvas'); host.replaceChildren(); const cur = currentSection(), curPart = partOf(cur), curTop = curPart && topOf(curPart.id);
   if (curPart && curPart.id !== mapSeen) { mapOpen.add(curPart.id); if (curTop) mapOpen.add(curTop.id); mapSeen = curPart.id; }
-  const filled = SECTIONS.filter(s => isFilled(s.id)).length; $('map-summary').textContent = `${filled}/${SECTIONS.length} 항목이 채워졌어요`;
+  const pend = SECTIONS.filter(s => isPending(s.id)).length, filled = SECTIONS.filter(s => isFilled(s.id)).length - pend; $('map-summary').textContent = `${filled}/${SECTIONS.length} 항목이 채워졌어요${pend ? `, 미정 ${pend}개` : ''}`;
   const rootUl = mk('ul', 'tree'), rootLi = mk('li', 't-root');
   const rb = mk('button', 't-root-btn', currentProject().name); rb.type = 'button'; rb.title = '눌러서 프로젝트 이름 바꾸기'; rb.onclick = () => renameProject(); rootLi.append(rb);
   const label = (id, title, done, total) => {
@@ -170,7 +172,7 @@ function renderMap() {
     if (open) {
       const ul = mk('ul');
       members.forEach(m => {
-        const text = sectionBody(m.id), sl = mk('li', 't-step' + (text ? ' done' : '') + (m.id === cur ? ' current' : '') + (m.id === mapSel ? ' sel' : ''));
+        const text = sectionBody(m.id), sl = mk('li', 't-step' + (isPending(m.id) ? ' skip' : text ? ' done' : '') + (m.id === cur ? ' current' : '') + (m.id === mapSel ? ' sel' : ''));
         const row = mk('div', 't-row'), nb = mk('button', 't-step-btn'); nb.type = 'button'; nb.title = m.hint; nb.setAttribute('aria-pressed', String(m.id === mapSel));
         nb.append(mk('b', '', m.title), mk('span', '', text.replace(/\*\*/g, '') || '아직 이야기하지 않았어요')); nb.onclick = () => { mapSel = m.id === mapSel ? '' : m.id; renderMap(); };
         row.append(nb); sl.append(row); if (m.id === mapSel) sl.append(buildMapDetail(m)); ul.append(sl);
@@ -195,7 +197,7 @@ function buildMapDetail(m) {
   const ta = document.createElement('textarea'); ta.value = sectionBody(m.id); ta.placeholder = m.hint; ta.disabled = busy; ta.setAttribute('aria-label', m.title);
   const acts = mk('div', 'md-actions');
   const save = mk('button', 'primary', '저장'); save.type = 'button'; save.disabled = busy; save.onclick = () => { if (/AIza[\w-]{20,}/.test(ta.value)) { toast('API 키는 설정에 입력해 주세요.'); return; } const v = redact(ta.value).trim(); if (v) state.doc[m.id] = v; else delete state.doc[m.id]; persist(); render(); toast('수정했어요.'); };
-  const talk = mk('button', '', '이 부분 이야기하기'); talk.type = 'button'; talk.onclick = () => { $('chat-input').value = `“${m.title.replace(/^[A-Z]-\d+\.\s*/, '')}” 부분에 대해 이야기하고 싶어요. `; $('detail-panel').classList.remove('mobile-open'); $('chat-input').focus(); };
+  const talk = mk('button', '', '이 질문에 답하기'); talk.type = 'button'; talk.disabled = busy || state.start !== 'done'; talk.onclick = () => { mapSel = ''; askLocally(m.id, `“${m.title}” 질문으로 갈게요.`); $('detail-panel').classList.remove('mobile-open'); persist(); render(); scrollChat(); $('chat-input').focus(); };
   acts.append(save, talk);
   box.append(head, mk('div', 'md-q', m.hint), ta, acts); return box;
 }
@@ -206,6 +208,8 @@ function updateConnection() {
 function render(flashIds) {
   ensureStart();
   renderProjects(); renderMap(); renderMessages(); renderChips(); renderDocument(flashIds); updateConnection();
+  $('flow-tools').hidden = state.start !== 'done' || guideActive(); ['skip-q', 'pick-q', 'finish-q'].forEach(id => { $(id).disabled = busy; });
+  $('skip-q').disabled = busy || !currentSection();
   $('send').disabled = busy; $('chat-input').disabled = busy; $('new-project').disabled = busy;
 }
 function scrollChat() { requestAnimationFrame(() => { const c = $('chat-scroll'); c.scrollTo({top:c.scrollHeight, behavior:'smooth'}); }); }
@@ -279,9 +283,40 @@ function parseJSON(text) {
 const isQuestion = t => /[?？]\s*$|가능할까|가능해|어떻게|뭐가 나|무엇이 나|추천해|모르겠|알려 ?주/.test(t);
 function keepTeacherAnswer(asked, changed) {
   const last = [...state.messages].reverse().find(m => m.role === 'user');
-  if (!asked || !sectionById(asked) || changed.includes(asked) || isFilled(asked) || !last || isQuestion(last.text.trim())) return;
+  if (!asked || !sectionById(asked) || changed.includes(asked) || (isFilled(asked) && !isPending(asked)) || !last || isQuestion(last.text.trim())) return;
   state.doc[asked] = redact(last.text.trim().split('\n').map(l => l.trim()).filter(Boolean).map(l => l.startsWith('- ') ? l : '- ' + l).join('\n')); changed.push(asked);
   if (state.focus === asked) state.focus = (SECTIONS.find(s => !isFilled(s.id)) || {}).id || '';
+}
+/* 질문 순서에 묶이지 않게: 건너뛰기, 질문 고르기, 여기서 마치기. AI를 부르지 않아 바로 넘어간다 */
+const nextOpen = () => SECTIONS.find(s => !isFilled(s.id));
+function quickChips(id) {
+  if (id === 'kind') return [];
+  try { return Planning.options(id, {...state.doc}).map(o => typeof o === 'string' ? o : (o.label || o.value)).filter(Boolean).slice(0, 5); } catch { return []; }
+}
+function askLocally(id, lead = '') {
+  const step = Planning.steps.find(s => s.id === id), sec = sectionById(id); if (!step || !sec) return;
+  state.messages.push({role:'assistant', local:true, text:`${lead ? lead + '\n\n' : ''}**${sec.title}** ${step.question}\n${step.help}`});
+  state.focus = id; state.chips = quickChips(id); state.ready = false;
+}
+function skipQuestion() {
+  const id = currentSection(); if (busy || state.start !== 'done' || !id) return;
+  state.doc[id] = PENDING;
+  const t = sectionById(id).title, c = t.charCodeAt(t.length - 1) - 0xAC00;
+  state.messages.push({role:'user', text:`“${t}”${c >= 0 && c < 11172 && c % 28 ? '은' : '는'} 미정으로 두고 넘어갈게요.`});
+  const next = nextOpen();
+  if (next) askLocally(next.id); else finishMessage(0);
+  persist(); render([id]); scrollChat(); $('chat-input').focus();
+}
+function finishMessage(n) {
+  state.focus = ''; state.chips = []; state.ready = true;
+  state.messages.push({role:'assistant', local:true, text:`${n ? `남은 질문 ${n}개를 미정으로 두고 ` : ''}기획서를 마무리했어요. 미정 항목은 개발 AI가 수업에 맞는 무난한 선택으로 만들고 "교사가 확인할 것"에 모아 알려 줘요. 기획서 탭에서 복사하거나 내려받으세요.\n더 채우고 싶은 질문은 언제든 "질문 고르기"로 골라 답할 수 있어요.`});
+}
+async function finishPlan() {
+  if (busy || state.start !== 'done') return;
+  const open = SECTIONS.filter(s => !isFilled(s.id));
+  if (open.length && !await openModal({title:'여기서 마칠까요?', message:`남은 질문 ${open.length}개를 미정으로 두고 기획서를 마무리해요. 미정 항목은 나중에 "질문 고르기"로 언제든 채울 수 있어요.`, ok:'마치기'})) return;
+  open.forEach(s => { state.doc[s.id] = PENDING; });
+  finishMessage(open.length); persist(); render(open.map(s => s.id)); scrollChat();
 }
 function applyReply(json) {
   const reply = String(json.reply || '').trim(); if (!reply) throw new Error('AI가 답변을 만들지 못했어요. 다시 시도해 주세요.');
@@ -388,6 +423,9 @@ function guideCard() {
   return curEl;
 }
 $('save-status').onclick = () => panel('settings');
+$('skip-q').onclick = skipQuestion;
+$('finish-q').onclick = finishPlan;
+$('pick-q').onclick = () => { panel('map'); mapOpen = new Set(Prompt.tops.map(t => t.id).concat(Prompt.parts.map(p => p.id))); renderMap(); toast('답하고 싶은 질문을 누른 뒤 "이 질문에 답하기"를 누르세요.'); };
 $('composer').onsubmit = e => { e.preventDefault(); if (send($('chat-input').value)) { $('chat-input').value = ''; if (curHandle) curHandle.reset(); } };
 $('chat-input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('composer').requestSubmit(); } };
 
