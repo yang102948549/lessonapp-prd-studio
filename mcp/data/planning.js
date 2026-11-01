@@ -103,7 +103,27 @@ globalThis.Planning = (() => {
     '진로':{mat:'직업·진로 카드',product:'진로 계획',tool:'관심 카드를 골라 나의 지도 만들기',evidence:'나의 관심과 강점',view:'카드와 계획표가 보이는 화면'},
     '보건':{mat:'건강 상황 사례',product:'실천 계획',tool:'상황별 행동 카드를 고르고 이유 쓰기',evidence:'건강 정보 근거',view:'상황 사례를 읽기 쉬운 화면'}
   };
-  const vocabFor=s=>s.startsWith('제2외국어')?{...vocab['영어'],mat:'외국어 대화문·음성 자료',product:'외국어로 말하거나 쓴 문장'}:vocab[baseOf(s)];
+  /* 화면 디자인 질문용: 과목의 실제 물건·장소(world), 거기서 가져올 색(palette), 기억에 남을 한 가지(sig) */
+  const look={
+    '국어':{world:'원고지와 책장',palette:'종이 흰색, 원고지의 붉은 줄, 잉크 남색',sig:'쓴 글이 원고지 칸에 한 글자씩 채워지는 입력란'},
+    '수학':{world:'모눈종이와 자·컴퍼스',palette:'모눈의 옅은 파랑, 연필심 회색, 형광펜 노랑',sig:'모눈 위에서 직접 끌어 움직이는 도형·수직선'},
+    '사회':{world:'지도와 통계 연감',palette:'지도의 바다 파랑, 등고선 갈색, 도로 노랑',sig:'고를 때마다 색이 칠해지는 지도'},
+    '과학':{world:'실험 노트와 관측 기록지',palette:'실험 노트의 모눈 초록, 리트머스 빨강·파랑, 유리 기구의 청회색',sig:'조건을 바꾸면 바로 달라지는 실험 장면 하나'},
+    '영어':{world:'항공권·메뉴판·간판 같은 실제 인쇄물',palette:'탑승권 하늘색, 여권 도장 빨강, 진한 남색',sig:'카페·공항 같은 장면 위에 말풍선이 뜨는 대화'},
+    '도덕':{world:'토론 테이블과 생각을 적는 일기장',palette:'차분한 회청색, 종이 흰색, 생각을 표시하는 따뜻한 한 색',sig:'입장을 옮길 때마다 기울어지는 저울'},
+    '역사':{world:'박물관 전시 라벨과 옛 문서',palette:'단청의 청록·주홍과 먹색',sig:'사건 카드를 놓을 때마다 길어지는 연표 한 줄'},
+    '음악':{world:'오선지 악보와 공연 프로그램',palette:'오선지의 흑백에 공연 포스터의 강렬한 한 색',sig:'누르면 실제 소리가 나는 오선지'},
+    '미술':{world:'미술관 벽과 작품 설명 캡션',palette:'작품이 돋보이는 회색 벽과 흰 캡션(색은 작품이 맡음)',sig:'작품을 크게 펼쳐 보는 전시 벽'},
+    '체육':{world:'경기장 전광판과 작전판',palette:'잔디 초록, 라인 흰색, 전광판 주황',sig:'선수 말을 끌어 옮기는 작전판'},
+    '실과':{world:'작업대와 재료 꼬리표',palette:'나무 작업대 갈색, 꼬리표 노랑, 공구 손잡이 빨강',sig:'단계가 끝날 때마다 완성되어 가는 작품 그림'},
+    '기술·가정':{world:'설계 도면과 제품 설명서',palette:'청사진 파랑과 흰 선, 안전 표시 노랑',sig:'선택에 따라 바뀌는 설계도'},
+    '정보':{world:'순서도와 코드 편집기',palette:'순서도 기호의 색(시작 초록·판단 노랑)과 편집기 남색',sig:'카드를 놓으면 바로 실행되어 움직이는 캐릭터'},
+    '통합교과':{world:'그림책과 교실 게시판',palette:'크레파스 원색 두세 가지와 도화지 흰색',sig:'누르면 소리와 함께 움직이는 그림 카드'},
+    '창의적 체험활동':{world:'학급 게시판과 회의록',palette:'게시판 코르크색, 포스트잇 노랑·분홍',sig:'의견이 모일수록 채워지는 학급 게시판'},
+    '진로':{world:'탐험 지도와 여행 기록장',palette:'지도 초록, 나침반 놋쇠색, 기록장 종이색',sig:'관심사를 고를수록 길이 이어지는 진로 지도'},
+    '보건':{world:'보건실 안내문과 응급 처치 카드',palette:'안내문 흰색, 안전 초록, 주의 주황',sig:'선택에 따라 달라지는 생활 장면'}
+  };
+  const vocabFor=s=>{const lang=s.startsWith('제2외국어'),b=lang?'영어':baseOf(s),v=vocab[b];if(!v)return v;const x={...v,...(look[b]||{})};return lang?{...x,mat:'외국어 대화문·음성 자료',product:'외국어로 말하거나 쓴 문장'}:x;};
   const generators={
     method:v=>[`${eul(v.mat)}탐색하며 ${eul(v.evidence)}표시하기`,`${eul(v.product)}먼저 만든 뒤 친구와 비교하기`,v.tool,`모둠이 ${eul(v.evidence)}모아 ${eul(v.product)}정리하기`],
     flow:v=>[`안내 → ${v.mat} 살펴보기 → ${v.product} 만들기 → 공유 → 돌아보기`,`질문 → ${v.evidence} 찾기 → ${v.product} 비교 → 수정 → 정리`],
@@ -114,12 +134,14 @@ globalThis.Planning = (() => {
     output:v=>[`${eul(v.product)}결과 화면에 모아 발표`,`초안과 수정한 ${eul(v.product)}나란히 보고 변화 설명`,`${eul(v.evidence)}한눈에 모아 보기`,`${eul(v.product)}인쇄하기 좋은 화면으로 보기`],
     teacherView:v=>[`${eul(v.product)}카드로 모아보기`,`${eul(v.evidence)}키워드로 모아보기`],
     features:v=>[`${eul(v.mat)}다시 보기`,`${eul(v.evidence)}표시·강조하는 기능`,`${eul(v.product)}임시 보관하고 이어서 하기`],
-    design:v=>[v.view,`${iga(v.mat)}가장 먼저 보이는 카드 중심 화면`],
-    visual:v=>[`${v.view} · 포인트 색 한 가지`],
+    world:v=>[`${eul(v.world)}닮은 화면`],
+    first:v=>[`핵심 ${v.mat} 하나를 화면 가득 크게`],
+    signature:v=>[v.sig],
+    palette:v=>[`${v.palette}에서 가져온 색`],
     roles:v=>[`조작 · ${eul(v.evidence)}확인 · 설명 역할을 단계마다 교대`],
     exclusions:v=>[`${eul(v.product)}자동 점수화하는 기능`],
   };
-  const mixBase=new Set(['roles','features','design','visual','exclusions','acceptance','output','teacherView','method','flow','rules','feedback']);
+  const mixBase=new Set(['roles','features','world','first','signature','palette','exclusions','acceptance','output','teacherView','method','flow','rules','feedback']);
   function subjectGenerated(id,answers){const gen=generators[id];if(!gen)return[];const out=[];subjectList(answers).forEach(s=>{const v=vocabFor(s);if(v)gen(v).forEach(label=>out.push({label,group:s,value:label}));});return out;}
   function bySubject(answers,kind,langFn,table){const out=[];subjectList(answers).forEach(s=>{const items=s.startsWith('제2외국어')?langFn(langName(s)):table[baseOf(s)];if(items)items.forEach(label=>out.push({label,group:s,value:label}));});return out;}
   const subjectLists={
@@ -138,8 +160,8 @@ globalThis.Planning = (() => {
     {id:'experiment',label:'탐구·문제 해결',match:/조건|예상|확인|풀이|오류|문제|전략|절차|순서|관계|결과|규칙 바꾸|움직임/,methods:['예상한 뒤 조건을 바꾸어 결과 비교','풀이 또는 절차를 배열하고 실행 결과 확인','서로 다른 해결 방법을 비교하고 설명','오류가 있는 과정을 찾아 수정하기'],materials:['조작할 조건과 그에 따른 결과 규칙','순서를 바꿀 수 있는 절차 카드','다양한 풀이 과정과 오류 사례','측정값·관찰값을 비교할 표'],flow:['문제 이해 → 예상 → 시도 → 결과 비교 → 설명','과정 확인 → 오류 찾기 → 수정 → 재실행 → 정리'],rules:['한 번에 바꾸는 조건의 범위 정하기','시도 전후 조건과 결과를 함께 남기기','초기 조건으로 되돌리는 버튼 제공','정답뿐 아니라 풀이 과정도 남기기'],feedback:['어느 단계부터 다시 볼지 힌트 제공','틀린 부분만 수정하고 맞는 과정 유지','결과가 달라진 이유를 설명하도록 질문']},
     {id:'reflect',label:'실천·성찰',match:/실천|기록|계획|돌아|경험|경로|관심|습관|건강|요청/,methods:['현재 상황을 돌아보고 실천 계획 세우기','여러 선택을 살펴보고 나의 계획 작성','활동 전후 생각을 비교해 기록하기','상황에 맞는 행동을 고르고 이유 설명'],materials:['생활 상황을 담은 가상 사례','선택 가능한 행동과 도움 자원','목표·방법·시기를 적는 계획 양식','활동 전후를 비교하는 질문'],flow:['상황 이해 → 선택 탐색 → 나의 계획 → 공유 → 돌아보기'],rules:['개인 경험 공개 없이 가상 사례로 참여 가능','계획을 저장하기 전에 다시 수정 가능','공유 여부를 학생이 선택'],feedback:['실행할 행동과 시기가 구체적인지 되묻기','개인 경험·성향을 정답으로 평가하지 않기','도움을 받을 수 있는 방법을 함께 안내']}
   ];
-  const parts=[{title:'수업 설계',groups:[0,1,2]},{title:'웹앱 구상',groups:[3,4,5,6]}];
-  const groups=['수업 맥락','활동 설계','학생 참여','사용 상황','데이터와 공유','교사 화면과 화면 표현','구성과 마무리'];
+  const parts=[{title:'수업 설계',groups:[0,1,2]},{title:'웹앱 구상',groups:[3,4,5,6,7]}];
+  const groups=['수업 맥락','활동 설계','학생 참여','사용 상황','데이터와 공유','교사 화면','화면 디자인','구성과 마무리'];
   const step=(id,title,group,question,help,options=[],more={})=>({id,title,group,question,help,options,placeholder:'선택지에 없는 내용도 자유롭게 이야기해 주세요.',...more});
   /* 결과를 기기 밖에 저장·공유해야 하는지(교사 취합·친구 공유·누적). 미정이면 필요하다고 가정 */
   const wantsUpload=a=>{const i=value(a,'interaction');return !i||/이미지|그림|첨부|녹음/.test(i);};
@@ -191,16 +213,21 @@ globalThis.Planning = (() => {
     step('teacher','교사의 역할',5,'교사는 어떤 화면이나 기능이 필요한가요?','교사용 관리 화면이 꼭 필요한지 정해요. 학생 화면만으로 수업을 운영할 수도 있어요.',['별도 관리 화면 없음 · 교사는 수업을 보며 진행','교사가 시작·종료와 다음 단계 공개','참여 현황과 완료 여부만 확인','학생 결과를 모아 보고 공개 여부 조절','교사가 수업 전 자료·문항을 편집','교사용 설명 보기 · 수업 중 안내와 정답 해설','시작 화면에서 학생용·교사용을 선택'],{multi:true}),
     step('teacherView','교사 화면 상세',5,'교사 화면에는 무엇을 보여줄까요?','필요한 결과 표시와 제어 기능을 골라주세요. 기능을 고르면 관리 권한과 상태 변화도 기획서에 정리합니다.',['입장 QR·링크와 참여 인원','제출·미제출 현황','답변 카드 모아보기','투표·수치 결과를 차트로 표시','키워드 모아보기','학생 입력 잠금·마감·일시정지','답변 숨기기·공개 전 확인','결과 CSV 다운로드','자료·문항 편집'],{multi:true,when:a=>!!a.teacher&&!String(a.teacher).includes('별도 관리 화면 없음')}),
     step('features','추가 기능',5,'활동을 돕는 기능을 더 골라볼까요?','선택한 활동과 충돌하지 않는 기능만 남기세요. 첫 버전은 핵심 기능 3개 안팎으로 줄이는 것을 권해요.',['읽음·선택·진행 상태 표시','이전 자료 다시 보기','남은 시간을 참고용으로 표시 · 자동 종료 없음','단계마다 답변 임시 보관','힌트를 원하는 때 열기','클릭·터치로 선택 · 드래그 대체 제공','진행 정도 표시(예: 3/4 확인)','결과 요약 화면(정답 수·헷갈린 문제)','전체 화면 보기','추가 기능 없이 핵심 활동에 집중'],{multi:true}),
-    step('design','화면 표현',5,'화면은 어떤 느낌이고 무엇이 잘 보여야 할까요?','색상뿐 아니라 긴 글, 작은 화면, 터치 조작도 고려해요.',['차분한 화면 · 본문과 입력창을 크게','카드 중심 화면 · 자료와 선택 상태를 명확하게','단계 중심 화면 · 지금 할 일과 다음 행동을 강조','시각 자료 중심 · 설명을 함께 제공','안내 캐릭터가 말풍선으로 설명하는 화면','게임처럼 단계가 열리고 진행 상태가 보이는 미션 화면','모던하고 깔끔한 스타일(캔바처럼)'],{multi:true}),
-    step('visual','색·글꼴·배치',5,'색상과 글꼴, 특히 강조할 화면 요소가 있나요?','톤을 고른 뒤 필요하면 직접 색상이나 배치를 적어주세요.',['중립색 바탕·한 가지 포인트·깔끔한 고딕체','밝은 바탕·부드러운 색·큰 버튼','어두운 바탕·명확한 대비·큰 자료 영역','전자칠판에서 멀리서도 보이는 글자·카드','스마트폰 세로 화면과 눈에 띄는 입력창','전체 화면(전자칠판) 보기 버튼'],{multi:true}),
+    step('world','화면의 소재',6,'이 앱의 화면은 교과 속 어떤 물건이나 장소를 닮으면 좋을까요?','AI가 만든 앱이 다 비슷해 보이는 건 소재 없이 “깔끔한 웹앱”을 만들기 때문이에요. 악보·지도·실험 노트처럼 교과에서 실제로 쓰는 물건이나 장소에서 화면 모양을 가져오면 이 수업만의 앱이 돼요.',['교과서·활동지 지면을 옮겨 온 듯한 화면','교실 칠판과 게시판을 닮은 화면','상황과 도입에서 정한 이야기 속 장소','게임 속 지도처럼 단계가 하나씩 열리는 화면','안내 캐릭터가 말풍선으로 이끄는 화면']),
+    step('first','첫 화면',6,'학생이 앱을 열면 가장 먼저 무엇이 보여야 하나요?','첫 화면이 앱의 인상을 정해요. 제목·설명·시작 버튼만 놓인 화면은 어느 앱에서나 보는 기본값이에요.',['오늘의 질문 한 문장을 화면 가득 크게','바로 만져 볼 수 있는 조작 장면 · 설명은 옆에 짧게','이야기의 첫 장면과 첫 대사','설명 없이 바로 첫 문제나 첫 카드','전자칠판에 띄울 입장 코드와 오늘 활동 이름']),
+    step('signature','기억에 남을 한 가지',6,'학생들이 수업 뒤에도 기억할 화면 요소 하나를 고른다면?','눈에 띄는 요소는 한 곳에만 둬요. 나머지를 조용하게 둘수록 그 한 가지가 살아나요.',['실제 도구를 닮은 조작판(자·저울·악보·작전판 등)','활동이 진행될수록 채워지는 그림이나 지도 한 장','맞혔을 때 딱 한 번 나오는 움직임','학생이 만든 결과물이 전시처럼 크게 걸리는 마지막 화면']),
+    step('palette','색',6,'색은 어디서 가져올까요?','보라색 그라데이션, 크림색 바탕에 주황 포인트, 검은 바탕에 형광색 하나는 AI가 가장 자주 고르는 조합이에요. 교과 자료나 우리 반에서 색을 가져오면 달라져요. 색 이름이나 색 코드를 직접 적어도 돼요.',['우리 학교·학급의 상징색','단원의 계절이나 장소의 색(예: 가을 들판, 바닷속)','전자칠판용 · 흰 바탕에 아주 진한 두 색으로 대비를 크게','저학년용 · 밝은 원색 두세 가지를 역할별로(선택·정답·버튼)']),
+    step('type','글자',6,'글자는 어떤 성격이면 좋을까요?','글꼴 하나만 바꿔도 앱의 인상이 크게 달라져요. 예로 든 글꼴은 모두 무료 웹폰트예요. 글꼴은 한두 가지만 써요.',['읽기 중심 · 본문까지 명조(예: 본명조, 고운바탕)','또렷한 고딕 한 가지로 차분하게(예: IBM Plex Sans KR, SUIT)','제목만 개성 있는 글꼴(예: 검은고딕, 도현) + 본문 고딕','저학년용 · 크고 둥근 글꼴(예: 고운돋움, 주아)과 넓은 줄 간격','손글씨체는 학생 말풍선이나 메모에만(예: 나눔손글씨 펜)','전자칠판용 · 본문 24px 이상, 제목은 그 두 배']),
+    step('layout','배치',6,'한 화면에 무엇을 어떻게 놓을까요?','내용을 모두 같은 크기의 둥근 카드로 나누면 흔한 템플릿처럼 보여요. 활동에 맞는 배치를 골라 주세요.',['한 화면에 한 가지 일 · 넘기며 진행','자료는 왼쪽, 활동은 오른쪽에 나란히(태블릿·노트북 가로)','큰 판(지도·작전판·캔버스) 하나 위에 모든 조작을 올림','위에서 아래로 읽어 내려가는 한 장짜리 활동지','스마트폰 세로 기준 · 엄지가 닿는 아래쪽에 버튼','전자칠판에서 멀리서도 보이는 크기와 전체 화면 버튼'],{multi:true}),
+    step('voice','화면 문구',6,'버튼과 안내 문구는 어떤 말투로 쓸까요?','화면의 말도 디자인이에요. 버튼에는 “제출” 대신 “내 의견 붙이기”처럼 누르면 일어나는 일을 써요.',['선생님이 옆에서 말하듯 짧은 존댓말','탐험·미션 지시문처럼 짧고 힘 있게','박물관 해설사처럼 차분하게 설명','실험 보고서처럼 건조하고 정확하게','친구에게 말하듯 친근한 반말(초등)']),
 
-    step('selfops','운영 비용',6,'앱을 운영하는 데 비용을 쓸 수 있나요?','저장 공간이나 AI를 쓰면 서비스 가입과 설정이 필요하고, 일부는 무료 한도를 넘으면 요금이 나와요. 무료 범위 안에서 만들지, 비용을 쓸 수 있는지 알려 주세요.',['무료만 사용 · 무료 한도 안에서만 만들기','월 몇천 원 정도의 소액 유료도 괜찮음','학교·기관의 예산이나 계정을 쓸 수 있음','아직 모르겠음 · 무료 범위에서 먼저 시작']),
-    step('upkeep','만든 뒤 관리',6,'만든 뒤 고치거나 관리는 누가 하나요?','오류를 고치거나 내용을 바꿀 때를 생각해요. AI 코딩 도구에 다시 요청하면 직접 고칠 수도 있어요.',['내가 직접 · AI 도구에 요청해 고치기','한 번 만들고 거의 손대지 않을 예정','동료 교사나 담당자가 함께 관리','학기마다 자료·문항만 바꿔 다시 쓸 예정']),
-    step('exclusions','추가로 고려할 기능',6,'첫 버전 뒤에 추가로 고려해 볼 기능이 있나요?','여기에 고른 기능은 이번 범위에 넣지 않고 다음 후보로만 적어 둬요. 고르지 않은 기능은 이번 버전에 필요한 것만 만든다고 보고, 정한 답과 겹치는 보기는 숨겨요.',['회원가입·로그인','점수·순위 경쟁','교사용 관리 화면','실시간 학급 집계','학생 활동 중 외부 AI 호출','사진·파일 업로드','학생끼리 채팅·댓글','학습 결과 통계·분석 화면','알림(푸시·이메일)'],{multi:true}),
-    step('stack','기술 구성',6,'추천 구성을 그대로 쓸까요, 다른 구성을 고를까요?','지금까지의 답으로 화면(프론트엔드), 저장·서버(백엔드), 공개 방법(배포)을 추천했어요. 추천 근거와 주의점을 읽어 보고 고르세요.',[],{}),
-    step('acceptance','완료 확인',6,'수업에서 쓰기 전에, 직접 해 보며 확인할 것은 무엇인가요?','“이게 되면 수업에 써도 된다”는 기준을 골라요. 앞에서 정한 답과 관련된 항목만 보여 드려요.',['안내만 보고 처음부터 끝까지 막힘 없이 진행되는지','버튼·카드·슬라이더 같은 핵심 조작이 클릭·터치에 바로 반응하는지','오답을 일부러 골랐을 때 해설이 나오고 다시 도전할 수 있는지','값을 0·음수·최댓값으로 바꿔도 화면과 계산이 정확한지','빈칸이나 미선택으로 넘어가려 할 때 안내가 나오는지','같은 버튼을 빠르게 여러 번 눌러도 결과가 중복되거나 단계가 건너뛰어지지 않는지','수정하거나 되돌렸을 때 결과 화면과 기록이 함께 바뀌는지','PC·태블릿·스마트폰의 가로·세로 화면에서 글자와 자료가 잘리지 않는지','새로고침이나 초기화를 했을 때 정한 저장 규칙대로 동작하는지','제출한 결과가 정한 저장 위치(교사 화면·시트 등)에 나타나는지','여러 학생이 동시에 접속해도 결과가 섞이거나 사라지지 않는지','마이크·소리를 쓸 때 권한 안내가 나오고, 거부해도 앱이 멈추지 않는지','챗봇이 수업과 무관하거나 부적절한 질문에도 안전하게 답하는지','자료·정답·해설의 내용이 정확한지 교사가 직접 검토했는지','정한 활동 시간 안에 처음부터 끝까지 교사 시연이 가능한지'],{multi:true}),
-    step('extra','마지막 요청',6,'개발할 때 꼭 챙겨야 할 요청이 더 있나요?','수업 중 생길 수 있는 상황을 미리 정해 두면 좋아요. 해당되는 것을 모두 고르세요.',['추가 요청 없음','같은 코드로 다시 들어오면 하던 활동을 이어서 할 수 있게','네트워크가 끊겨도 입력한 내용이 사라지지 않게','같은 학생이 두 번 접속해도 결과가 중복되지 않게','수업이 끝나면 교사가 한 번에 초기화할 수 있게','자료·정답·이미지는 교사가 출처와 대조해 검토','이미지·음원의 출처와 이용 조건을 표시','전자칠판(전체 화면)에서도 보기 좋게'],{multi:true,placeholder:'예: 수업 중 새로고침해도 이전 답이 남아 있으면 좋겠어요.'}),
-    step('project','웹앱 이름',6,'웹앱 이름을 정할까요?','수업에서 학생에게 보여 줄 이름이에요. 나중에 바꿔도 돼요.',['가칭은 AI가 제안해 주세요','이름은 나중에 직접 정할게요'],{placeholder:'예: 생각 모으기'}),
+    step('selfops','운영 비용',7,'앱을 운영하는 데 비용을 쓸 수 있나요?','저장 공간이나 AI를 쓰면 서비스 가입과 설정이 필요하고, 일부는 무료 한도를 넘으면 요금이 나와요. 무료 범위 안에서 만들지, 비용을 쓸 수 있는지 알려 주세요.',['무료만 사용 · 무료 한도 안에서만 만들기','월 몇천 원 정도의 소액 유료도 괜찮음','학교·기관의 예산이나 계정을 쓸 수 있음','아직 모르겠음 · 무료 범위에서 먼저 시작']),
+    step('upkeep','만든 뒤 관리',7,'만든 뒤 고치거나 관리는 누가 하나요?','오류를 고치거나 내용을 바꿀 때를 생각해요. AI 코딩 도구에 다시 요청하면 직접 고칠 수도 있어요.',['내가 직접 · AI 도구에 요청해 고치기','한 번 만들고 거의 손대지 않을 예정','동료 교사나 담당자가 함께 관리','학기마다 자료·문항만 바꿔 다시 쓸 예정']),
+    step('exclusions','추가로 고려할 기능',7,'첫 버전 뒤에 추가로 고려해 볼 기능이 있나요?','여기에 고른 기능은 이번 범위에 넣지 않고 다음 후보로만 적어 둬요. 고르지 않은 기능은 이번 버전에 필요한 것만 만든다고 보고, 정한 답과 겹치는 보기는 숨겨요.',['회원가입·로그인','점수·순위 경쟁','교사용 관리 화면','실시간 학급 집계','학생 활동 중 외부 AI 호출','사진·파일 업로드','학생끼리 채팅·댓글','학습 결과 통계·분석 화면','알림(푸시·이메일)'],{multi:true}),
+    step('stack','기술 구성',7,'추천 구성을 그대로 쓸까요, 다른 구성을 고를까요?','지금까지의 답으로 화면(프론트엔드), 저장·서버(백엔드), 공개 방법(배포)을 추천했어요. 추천 근거와 주의점을 읽어 보고 고르세요.',[],{}),
+    step('acceptance','완료 확인',7,'수업에서 쓰기 전에, 직접 해 보며 확인할 것은 무엇인가요?','“이게 되면 수업에 써도 된다”는 기준을 골라요. 앞에서 정한 답과 관련된 항목만 보여 드려요.',['안내만 보고 처음부터 끝까지 막힘 없이 진행되는지','버튼·카드·슬라이더 같은 핵심 조작이 클릭·터치에 바로 반응하는지','오답을 일부러 골랐을 때 해설이 나오고 다시 도전할 수 있는지','값을 0·음수·최댓값으로 바꿔도 화면과 계산이 정확한지','빈칸이나 미선택으로 넘어가려 할 때 안내가 나오는지','같은 버튼을 빠르게 여러 번 눌러도 결과가 중복되거나 단계가 건너뛰어지지 않는지','수정하거나 되돌렸을 때 결과 화면과 기록이 함께 바뀌는지','PC·태블릿·스마트폰의 가로·세로 화면에서 글자와 자료가 잘리지 않는지','새로고침이나 초기화를 했을 때 정한 저장 규칙대로 동작하는지','제출한 결과가 정한 저장 위치(교사 화면·시트 등)에 나타나는지','여러 학생이 동시에 접속해도 결과가 섞이거나 사라지지 않는지','마이크·소리를 쓸 때 권한 안내가 나오고, 거부해도 앱이 멈추지 않는지','챗봇이 수업과 무관하거나 부적절한 질문에도 안전하게 답하는지','자료·정답·해설의 내용이 정확한지 교사가 직접 검토했는지','정한 활동 시간 안에 처음부터 끝까지 교사 시연이 가능한지'],{multi:true}),
+    step('extra','마지막 요청',7,'개발할 때 꼭 챙겨야 할 요청이 더 있나요?','수업 중 생길 수 있는 상황을 미리 정해 두면 좋아요. 해당되는 것을 모두 고르세요.',['추가 요청 없음','같은 코드로 다시 들어오면 하던 활동을 이어서 할 수 있게','네트워크가 끊겨도 입력한 내용이 사라지지 않게','같은 학생이 두 번 접속해도 결과가 중복되지 않게','수업이 끝나면 교사가 한 번에 초기화할 수 있게','자료·정답·이미지는 교사가 출처와 대조해 검토','이미지·음원의 출처와 이용 조건을 표시','전자칠판(전체 화면)에서도 보기 좋게'],{multi:true,placeholder:'예: 수업 중 새로고침해도 이전 답이 남아 있으면 좋겠어요.'}),
+    step('project','웹앱 이름',7,'웹앱 이름을 정할까요?','수업에서 학생에게 보여 줄 이름이에요. 나중에 바꿔도 돼요.',['가칭은 AI가 제안해 주세요','이름은 나중에 직접 정할게요'],{placeholder:'예: 생각 모으기'}),
   ];
   const value=(answers,id)=>Array.isArray(answers[id])?answers[id].join(' / '):answers[id]||'';
   const stepById=id=>steps.find(s=>s.id===id);
@@ -296,7 +323,10 @@ globalThis.Planning = (() => {
   };
   function refineOptions(id,a,list){
     const u=unitInfo(a),sh=needsShare(a),inter=val(a,'interaction');const keep=re=>list.filter(o=>!re.test(lab(o)));
+    const noStory=!val(a,'story')||/별도 이야기 없이/.test(val(a,'story'));
     switch(id){
+      case 'world':return noStory?keep(/이야기 속 장소/):list;
+      case 'first':{let l=noStory?keep(/이야기의 첫 장면/):list;if(val(a,'results')&&!sh)l=l.filter(o=>!/전자칠판에 띄울/.test(lab(o)));return l;}
       case 'roles':
         if(u.solo)return ['개별 활동 · 별도 역할 구분 없음','개별 활동 · 마지막에 친구와 결과를 나누는 역할만 둠'];
         if(u.cls)return ['학급 공동 활동 · 교사가 조작하고 학생이 의견 제시','학급 공동 활동 · 학생이 돌아가며 교사 화면을 조작'];
@@ -358,18 +388,82 @@ globalThis.Planning = (() => {
     }
   }
   /* 어떤 질문이든 "해당 없음" 답을 고를 수 있게, 필요 없음 계열 선택지를 마지막에 보탠다 */
-  const NONE={rules:'이동 제한 없음 · 언제든 자유롭게 이동',feedback:'별도 안내 없이 학생이 스스로 확인',design:'특별한 요구 없음 · 기본 스타일로',visual:'특별한 요구 없음 · 기본 스타일로',exclusions:'추가로 고려할 기능 없음 · 지금 정한 기능만',materials:'별도 자료 없음 · 교사가 말로 안내',story:'별도 이야기 없이 탐구 질문으로 시작'};
+  const NONE={rules:'이동 제한 없음 · 언제든 자유롭게 이동',feedback:'별도 안내 없이 학생이 스스로 확인',world:'정하지 않음 · 개발 AI가 교과 소재에서 골라 제안',first:'정하지 않음 · 개발 AI가 활동에 맞게 제안',signature:'정하지 않음 · 개발 AI가 활동에 맞게 제안',palette:'정하지 않음 · 개발 AI가 화면의 소재에서 색 4~6개를 골라 제안',type:'정하지 않음 · 개발 AI가 소재에 맞는 무료 웹폰트를 제안',exclusions:'추가로 고려할 기능 없음 · 지금 정한 기능만',materials:'별도 자료 없음 · 교사가 말로 안내',story:'별도 이야기 없이 탐구 질문으로 시작'};
   function options(id,answers){const list=refineOptions(id,answers,baseOptions(id,answers));const none=NONE[id];if(!none||list.some(o=>lab(o)===none))return list;return [...list,list.length&&typeof list[0]!=='string'?{label:none,group:'공통',value:none}:none];}
   const sectionDefs=[
     ['기본 수업 정보',['project','school','grades','subjects','idea','direction','stage','objective','duration']],
     ['사용 환경 및 접속 방식',['participants','unit','devices','identity','network','roles']],
     ['활동 구성·실행 방식과 진행 규칙',['kind','detail','activity','method','story','materials','flow','control','rules','feedback']],
     ['핵심 구현 기능: 교사 화면과 학생 화면',['teacher','teacherView','interaction','media','levels','input','output','features']],
-    ['디자인 및 화면 스타일',['design','visual']],
+    ['화면 디자인',['world','first','signature','palette','type','layout','voice']],
     ['운영 조건·기술 구성',['trace','score','results','live','retention','files','aiuse','export','selfops','upkeep','stack','exclusions','extra']],
     ['완료 기준',['acceptance']]
   ];
   function visibleSteps(answers){return steps.filter(s=>!s.when||s.when(answers));}
+  /* 모든 PRD 끝에 붙는 개발 AI용 작업 지침. Anthropic frontend-design 스킬을 옮겨 쓰고, 빈약한 결과물을 막는 완성도 기준을 더했다.
+     finalize()가 이전 지침을 지우고 최신 지침 하나만 붙이므로 교사가 기획서를 고쳐도 중복되지 않는다. */
+  const devNote='> 개발 AI에게: 만들기 전에 이 문서 끝의 "개발 AI 작업 지침"을 먼저 읽고 그 순서대로 작업하세요.';
+  const devGuide=`<!-- dev-guide:start -->
+## 개발 AI 작업 지침
+이 절은 이 PRD를 받아 웹앱을 만드는 개발 AI(Claude, Gemini, Cursor 등)를 위한 지침이다. 위의 내용이 무엇을 만들지라면, 이 절은 어떻게 만들지다. 위에서 교사가 정한 내용이 이 지침보다 우선한다.
+
+### 0. 시작 전에
+- Claude Code를 쓴다면 Anthropic 공식 frontend-design 스킬(https://github.com/anthropics/skills/tree/main/skills/frontend-design)을 설치해 함께 적용한다. 스킬이 없어도 아래 지침에 그 핵심이 들어 있다.
+- 한 줄 요청으로 만든 앱과 같은 결과물을 내지 않는다. 이 PRD의 답 하나하나가 화면과 기능에 드러나야 한다.
+
+### 1. 완성도: 빈약한 결과물을 만들지 않는다
+- 코드를 쓰기 전에 이 PRD에서 화면 목록, 기능 목록, 규칙(이동·입력·피드백) 목록을 뽑아 체크리스트로 보여 준다. 다 만든 뒤 하나씩 대조하고, 빠진 항목이 있으면 끝난 것이 아니다.
+- 실제 내용을 채운다. 자료, 문항, 카드, 선택지, 피드백 문구, 정답 해설을 이 성취기준과 단원에 맞게 실제로 쓴다. 개수가 정해져 있으면 그 수만큼, 없으면 한 차시 활동에 충분한 분량으로 쓴다. "예시 1", "문항 내용", "Lorem ipsum", "여기에 설명" 같은 자리표시는 남기지 않는다.
+- [미정]이나 [제안]으로 남은 항목은 수업 맥락에 맞는 가장 무난한 선택으로 구현하고, 마지막에 "교사가 확인할 것" 목록으로 모은다.
+- 모든 상태를 만든다: 처음 화면, 진행 중, 아무것도 없는 빈 상태, 입력 오류, 완료, 다시 하기. PRD의 저장 방식에 맞게 새로고침해도 진행이 유지되게 한다.
+- 교사가 고쳐 쓸 수 있게 자료와 문항은 코드 한 곳(데이터 파일이나 맨 위의 객체)에 모으고 그 위치를 알려 준다.
+- 실행 방법과 배포 방법(위 "기술 구성" 기준)을 코딩 입문 교사가 따라 할 수 있는 말로 적는다.
+- 마지막으로 "완료 확인" 항목을 하나씩 직접 실행해 보고 결과를 보고한다.
+
+### 2. 디자인 방향: 이 수업에서 출발한다
+- 모든 고객에게 남과 헷갈리지 않는 시각 정체성을 주는 디자인 스튜디오의 디자인 책임자처럼 작업한다. 이 교사는 뻔하고 템플릿 같은 안을 이미 거절했다고 생각하고, 이 수업에만 맞는 색·글꼴·배치를 의도적으로 고른다. 근거가 있다면 과감한 선택도 한다.
+- 디자인의 출발점은 과목과 단원의 실제 세계다. 그 교과에서 쓰는 물건·자료·장소·말투(위 "화면의 소재")에서 시각적 선택을 끌어온다. 초등 저학년의 그림 카드 활동과 고등학교 사료 분석은 전혀 다른 모습이어야 한다. 처음부터 끝까지 이 수업의 실제 내용으로 만든다.
+- 첫 화면은 이 수업 세계에서 가장 특징적인 것으로 연다(위 "첫 화면"). 질문 한 문장, 자료 한 장, 바로 만져 볼 조작 장면처럼 알맞은 형태를 고른다. 큰 숫자와 작은 설명, 통계 몇 개, 그라데이션 강조로 된 화면은 흔한 기본값이니 정말 가장 알맞을 때만 쓴다.
+- 글꼴은 한두 가지만 쓰고, 두 가지면 확실히 다르게 한다. 어느 앱에나 쓰는 기본 글꼴 대신 이 수업에 맞는 무료 한글 웹폰트를 고르고(위 "글자"), 글자 크기 단계와 굵기·자간을 의도적으로 정한다. 제목 글자는 내용을 담는 그릇이 아니라 디자인의 일부로 다룬다.
+- 본문 한 줄은 한글 40자 안팎으로 한다. 명조 본문은 고딕보다 줄 간격을 조금 더 준다.
+- 화면의 구조가 곧 정보다. 테두리, 번호, 라벨, 구분선은 장식이 아니라 내용에 대한 정보를 담아야 한다. 01·02·03 같은 번호는 단계나 시간 흐름처럼 실제로 순서가 있는 내용에만 붙인다.
+- 저절로 움직이는 효과는 주의를 끌어야 할 때만 아껴 쓴다. 잘 짜인 한 번의 연출이 여기저기 흩어진 효과보다 낫다. 학생의 행동(열기, 펼치기, 맞히기)에 반응해 무엇이 바뀌었는지 보여 주는 움직임은 좋다.
+
+### 3. 피할 기본값
+지금 AI가 만든 화면은 아래 특징에 몰려 있다. 교사가 직접 원한 경우에는 그대로 따르되, 정하지 않은 부분을 이 기본값으로 채우지 않는다.
+1. 따뜻한 크림색 바탕(#F4F1EA 근처)에 대비가 강한 명조 제목, 테라코타·점토색 포인트(#D97757 근처)
+2. 거의 검은 바탕에 형광 초록이나 주홍 한 가지 포인트
+3. 가는 선, 각진 모서리, 빽빽한 다단으로 된 신문 지면 같은 배치
+4. 내용을 모두 같은 둥근 카드로 자르고, 위계와 상관없이 같은 모서리 둥글기와 같은 회색 그림자(rgba(0,0,0,.1))를 쓰고, 장식용 그라데이션(보라·남색 그라데이션 포함)을 까는 구성
+5. 주제와 상관없이 붙는 장식: 제목마다 위에 붙는 작은 대문자·넓은 자간 라벨, 가운뎃점으로 이어 붙인 정보 줄, "단어 — 설명" 꼴의 라벨, 검정 대신 쓰는 #0B0B0B·#111, 작은 데이터 라벨용 고정폭 글꼴, 링크·버튼 글자 끝의 화살표(→)
+이 밖에 제목에서 한 단어만 색·굵기·기울임으로 강조하기, 모든 라벨을 대문자로 쓰기, 필요 없는 소제목 라벨 달기, 섹션마다 아래에서 떠오르는 등장 효과, 모든 카드에 붙는 마우스 올림 효과, 꾸밈용 이모지도 쓰지 않는다.
+
+### 4. 작업 순서: 계획, 검토, 구현, 비평
+1. 디자인 계획을 먼저 쓴다.
+   - 색: 이름을 붙인 기본 색 4~6개와 색 코드
+   - 글자: 글꼴과 각각의 역할
+   - 배치: 화면마다 한 문장 설명과 글자 그림(ASCII) 와이어프레임, 왼쪽 정렬·가운데 정렬 방침. 두 안을 그려 비교해도 좋다.
+   - 원칙: 이 앱을 고유하게 만드는 원칙 2~3개
+2. 계획을 이 PRD와 대조해 검토한다. 비슷한 다른 수업을 받았어도 똑같이 나왔을 선택이면 그 부분을 이 수업에 맞게 고치고, 무엇을 왜 바꿨는지 적는다. 그다음에 코드를 쓴다.
+3. 고친 계획대로 코드를 쓴다. CSS 선택자끼리 서로 덮어쓰지 않게 우선순위를 정리한다(특히 섹션 사이 여백).
+4. 만들면서 스스로 비평한다. 가능하면 화면을 캡처해 직접 보고, 3번의 기본값이 남아 있으면 고친다.
+
+### 5. 절제와 기본 품질
+- 대담함은 한 곳에만 쓴다(위 "기억에 남을 한 가지"). 나머지는 조용하고 단정하게 두고, 수업에 도움이 되지 않는 장식은 뺀다. 집을 나서기 전 거울을 보고 장신구 하나를 빼라는 샤넬의 말처럼, 완성 직전에 꾸밈 하나를 뺀다.
+- 기본 품질은 따로 내세우지 않고 지킨다: 휴대폰부터 전자칠판까지 화면 크기 대응, 눈에 보이는 키보드 포커스, "동작 줄이기" 설정 존중, 글자와 배경 대비 4.5:1 이상, 누르는 영역 44px 이상, 서로 어울리는 색.
+
+### 6. 화면 문구
+- 화면의 말은 이해와 사용을 돕기 위해서만 있다. 무엇을 말해야 하는지 먼저 정하고, 문장마다 한 가지 일만 하게 짧게 쓴다.
+- 학생과 교사가 아는 쉬운 말로 쓴다. 시스템이 어떻게 만들어졌는지가 아니라 사용자가 하는 일로 이름 붙인다. 파는 말투 대신 무엇인지, 무엇을 하는지 그대로 쓴다.
+- 버튼은 누르면 일어나는 일을 쓴다("제출" 대신 "내 답 보내기"). 같은 동작은 끝까지 같은 이름을 쓴다(버튼 "공개하기" → 알림 "공개했어요").
+- 오류는 사과하거나 흐리게 말하지 않고, 무엇이 잘못됐고 어떻게 고치는지 알려 준다. 빈 화면에는 다음에 할 일을 적는다.
+- 위 "화면 문구"에서 정한 말투를 지키고, "학습을 더 즐겁게!"처럼 아무 수업에나 붙는 문구는 쓰지 않는다.
+
+### 7. 답변 순서
+(1) 화면·기능·규칙 체크리스트 (2) 디자인 계획 (3) 검토에서 바꾼 점과 이유 (4) 코드 (5) 실행·배포 방법과 자료를 고치는 위치 (6) 완료 확인 결과와 교사가 확인할 것
+<!-- dev-guide:end -->`;
+  /* 내보낼 PRD에 맨 위 안내 한 줄과 맨 끝 지침을 붙인다. 이미 붙어 있던 것은 지우고 최신판으로 바꾼다. */
+  function finalize(md){let t=String(md||'').replace(/\n*<!-- dev-guide:start -->[\s\S]*?<!-- dev-guide:end -->\n*/g,'\n\n').replace(/\n*> 개발 AI에게:[^\n]*\n*/g,'\n\n').trim();const nl=t.indexOf('\n');t=/^# /.test(t)?(nl<0?t:t.slice(0,nl))+'\n\n'+devNote+(nl<0?'':'\n\n'+t.slice(nl+1).trim()):devNote+'\n\n'+t;return t+'\n\n'+devGuide+'\n';}
   function sections(answers){return sectionDefs.map(([title,ids])=>[title,ids.filter(id=>!stepById(id).when||stepById(id).when(answers)).map(id=>{const v=value(answers,id);return `### ${stepById(id).title}\n${v?v+(id==='stack'&&!/^미정/.test(v)?'\n'+stackText(answers):''):'[미정] 질문에 답하거나 AI 제안을 검토해 주세요.'}`;}).join('\n\n')]);}
   function checks(answers){const ids=['idea','direction','objective','activity','method','materials','flow','control','rules','feedback','interaction','input','output','participants','identity','results','aiuse','stack','acceptance'];return ids.map(id=>({id,label:steps.find(s=>s.id===id).title,done:!!value(answers,id)&&!/^미정/.test(value(answers,id))}));}
   function conflicts(answers){const v=id=>val(answers,id);const issues=[];const rt=isRealtime(answers),shared=needsShare(answers),ai=AI_RE.test(v('aiuse')),stack=stackByLabel(answers.stack);
@@ -390,9 +484,12 @@ globalThis.Planning = (() => {
     return issues;
   }
   function labeledAnswers(answers){return steps.filter(s=>answers[s.id]&&(!s.when||s.when(answers))).map(s=>`- ${s.title}: ${value(answers,s.id)}${s.id==='stack'&&!/^미정/.test(value(answers,s.id))?'\n'+stackText(answers):''}`).join('\n')||'(아직 정한 답변 없음)';}
-  function coachPrompt(answers,id,request,proposal=false){const s=steps.find(s=>s.id===id);return `당신은 수업 웹앱 설계 동료다. 한국어로 대화한다. 사용자는 아래의 수업을 설계하고 있고, 지금까지 정한 답변과 일관되게 도와야 한다.\n[지금까지 정한 수업 정보]\n${labeledAnswers(answers)}\n\n[지금 정하는 질문] ${s?.question||'최종 검토'}\n[활동 분기] ${selectedBranches(answers).map(b=>b.label).join(', ')}\n\n규칙: 위 과목·학교급·학년·단원 주제·배움의 목표·활동에 반드시 맞는 내용만 쓴다. 다른 과목에도 그대로 쓸 수 있는 일반적인 답을 하지 않는다. 이미 정한 답변과 충돌하면 그 점을 알린다. 사용자가 정하지 않은 내용은 [제안]이라고 표시한다. 평가 요소를 추천하는 요청으로 오해하지 않는다. 교과서나 성취기준은 추측하지 않는다.\n${proposal?'현재 질문에 들어갈 구체적인 답변 초안 1개만 작성한다. 활동·주제를 연결하고 실제 문구·개수·조건을 필요한 만큼 제안한다. 다른 단계로 진행하거나 전체 PRD를 쓰지 않는다. 마크다운 기호 없이 순수한 문장으로만, 간결하게 쓴다. JSON {"draft":"초안"} 하나만 출력한다.':'사용자의 질문에 간결하게 설명하고 가능한 선택지를 비교한다. 답변을 확정하거나 자동으로 다음 단계로 넘어가지 않는다. answer에는 마크다운 표·제목·구분선 없이 짧은 문단과 "- " 목록만 쓰고 600자 이내로 한다. choices에는 사용자가 현재 질문의 답변으로 바로 고를 수 있는 짧은 문장 3~4개를 쓴다(질문 형태 금지). JSON {"answer":"...","choices":["...","..."]} 하나만 출력한다.'}\n사용자 메시지: ${request}`;}
-  function migrate(saved){if(!saved||!saved.answers||!Array.isArray(saved.messages))return null;const next={...saved,version:4};if(next.answers&&/제외/.test(JSON.stringify(next.answers.exclusions||'')))next.answers={...next.answers,exclusions:undefined};
-    if(saved.version<3){const ids=new Set(steps.map(s=>s.id));next.answers=Object.fromEntries(Object.entries(saved.answers).filter(([k])=>ids.has(k)));const open=steps.findIndex(s=>(!s.when||s.when(next.answers))&&!next.answers[s.id]);next.step=open<0?steps.length:open;next.draftStale=!!saved.draft;}
-    else{const at=Number(saved.step)||0;const dir=steps.findIndex(s=>s.id==='direction');next.step=Math.min(Math.max(saved.version===3&&at>=dir?at+1:at,0),steps.length);}return next;}
-  return {steps,visibleSteps,groups,parts,sectionDefs,options,sections,checks,conflicts,coachPrompt,subjectsFor,migrate,selectedBranches,recommend,stackText};
+  const designHint='화면 디자인 질문이다. 이 과목과 단원에서 실제로 쓰는 물건·장소·자료에서 화면의 소재를 찾는다. 색은 이름과 색 코드로, 글꼴은 무료 한글 웹폰트 이름으로 구체적으로 제안한다. 보라색 그라데이션, 크림색 바탕에 주황 포인트, 검은 바탕에 형광색 하나, 같은 크기의 둥근 카드 나열, "깔끔하고 모던한 스타일"처럼 어느 앱에나 맞는 답은 제안하지 않는다.';
+  function coachPrompt(answers,id,request,proposal=false){const s=steps.find(s=>s.id===id);return `당신은 수업 웹앱 설계 동료다. 한국어로 대화한다. 사용자는 아래의 수업을 설계하고 있고, 지금까지 정한 답변과 일관되게 도와야 한다.\n[지금까지 정한 수업 정보]\n${labeledAnswers(answers)}\n\n[지금 정하는 질문] ${s?.question||'최종 검토'}\n[활동 분기] ${selectedBranches(answers).map(b=>b.label).join(', ')}\n\n규칙: 위 과목·학교급·학년·단원 주제·배움의 목표·활동에 반드시 맞는 내용만 쓴다. 다른 과목에도 그대로 쓸 수 있는 일반적인 답을 하지 않는다. 이미 정한 답변과 충돌하면 그 점을 알린다. 사용자가 정하지 않은 내용은 [제안]이라고 표시한다. 평가 요소를 추천하는 요청으로 오해하지 않는다. 교과서나 성취기준은 추측하지 않는다.\n${s&&s.group===6?designHint+'\n':''}${proposal?'현재 질문에 들어갈 구체적인 답변 초안 1개만 작성한다. 활동·주제를 연결하고 실제 문구·개수·조건을 필요한 만큼 제안한다. 다른 단계로 진행하거나 전체 PRD를 쓰지 않는다. 마크다운 기호 없이 순수한 문장으로만, 간결하게 쓴다. JSON {"draft":"초안"} 하나만 출력한다.':'사용자의 질문에 간결하게 설명하고 가능한 선택지를 비교한다. 답변을 확정하거나 자동으로 다음 단계로 넘어가지 않는다. answer에는 마크다운 표·제목·구분선 없이 짧은 문단과 "- " 목록만 쓰고 600자 이내로 한다. choices에는 사용자가 현재 질문의 답변으로 바로 고를 수 있는 짧은 문장 3~4개를 쓴다(질문 형태 금지). JSON {"answer":"...","choices":["...","..."]} 하나만 출력한다.'}\n사용자 메시지: ${request}`;}
+  function migrate(saved){if(!saved||!saved.answers||!Array.isArray(saved.messages))return null;const next={...saved,version:5};if(next.answers&&/제외/.test(JSON.stringify(next.answers.exclusions||'')))next.answers={...next.answers,exclusions:undefined};
+    /* v5: 화면 표현(design)·색·글꼴·배치(visual) 두 질문을 화면 디자인 7개 질문으로 나눔. 예전 답은 배치·색으로 옮긴다 */
+    if((saved.version||0)<5&&next.answers){const a={...next.answers};if(a.design&&!a.layout)a.layout=a.design;if(a.visual&&!a.palette)a.palette=a.visual;delete a.design;delete a.visual;next.answers=a;if(saved.draft)next.draftStale=true;}
+    if(saved.version<3){const ids=new Set(steps.map(s=>s.id));next.answers=Object.fromEntries(Object.entries(next.answers).filter(([k])=>ids.has(k)));const open=steps.findIndex(s=>(!s.when||s.when(next.answers))&&!next.answers[s.id]);next.step=open<0?steps.length:open;next.draftStale=!!saved.draft;}
+    else{let at=Number(saved.step)||0;const dir=steps.findIndex(s=>s.id==='direction');if(saved.version===3&&at>=dir)at++;if(saved.version<5){const w=steps.findIndex(s=>s.id==='world');at=at>=w+2?at+5:at>=w?w:at;}next.step=Math.min(Math.max(at,0),steps.length);}return next;}
+  return {steps,visibleSteps,groups,parts,sectionDefs,devGuide,finalize,options,sections,checks,conflicts,coachPrompt,subjectsFor,migrate,selectedBranches,recommend,stackText};
 })();

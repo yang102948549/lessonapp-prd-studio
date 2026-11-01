@@ -7,7 +7,7 @@ const uid = () => 'p' + Date.now().toString(36) + Math.random().toString(36).sli
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const currentProject = () => projects.find(p => p.id === currentId);
 /* 이전 버전의 섹션 id를 새 질문 항목으로 옮긴다(예전 기획서 내용 보존) */
-const OLD_IDS = {tool:'project', context:'idea', goal:'objective', why:'idea', action:'interaction', content:'materials', env:'devices', ops:'stack', done:'acceptance', open:'extra', nongoals:'extra'};
+const OLD_IDS = {tool:'project', context:'idea', goal:'objective', why:'idea', action:'interaction', content:'materials', env:'devices', ops:'stack', done:'acceptance', open:'extra', nongoals:'extra', design:'layout', visual:'palette'};
 function migrateDoc(st) {
   const known = new Set(Prompt.sections.map(s => s.id)), doc = {};
   Object.entries(st.doc || {}).forEach(([k, v]) => { const id = known.has(k) ? k : (OLD_IDS[k] || 'extra'); if (typeof v === 'string' && v.trim()) doc[id] = doc[id] ? doc[id] + '\n\n' + v : v; });
@@ -30,7 +30,7 @@ if (!projects.length) { projects = [{id:uid(), name:DEFAULT_NAME, updated:Date.n
 state = loadState(currentProject().state);
 
 function redact(text) { return String(text).replace(/AIza[\w-]{20,}/g, '[API 키 삭제됨]').split(apiKey || '\u0000').join(apiKey ? '[API 키 삭제됨]' : '\u0000'); }
-function renderSaveStatus() { $('save-status').textContent = `${projects.length}/${MAX_PROJECTS}개 · 이 브라우저에만 저장`; }
+function renderSaveStatus() { $('save-status').textContent = `${projects.length}/${MAX_PROJECTS}개, 이 브라우저에만 저장`; }
 function persist() {
   try {
     const p = currentProject(); p.state = state; p.updated = Date.now();
@@ -93,7 +93,7 @@ function renderMd(text) {
 /* ---------- 화면 ---------- */
 function renderMessages() {
   const root = $('messages'); root.replaceChildren();
-  const add = (role, build) => { const m = document.createElement('div'); m.className = 'message ' + role; if (role === 'assistant') { const w = document.createElement('div'); w.className = 'who'; w.textContent = '✳ 수업 웹앱 개발 도우미'; m.append(w); } build(m); root.append(m); return m; };
+  const add = (role, build) => { const m = document.createElement('div'); m.className = 'message ' + role; if (role === 'assistant') { const w = document.createElement('div'); w.className = 'who'; w.textContent = '수업 웹앱 개발 도우미'; m.append(w); } build(m); root.append(m); return m; };
   state.messages.forEach(msg => add(msg.role, m => { if (msg.role === 'user') m.append(document.createTextNode(msg.text)); else if (msg.error) { const e = document.createElement('div'); e.className = 'error-msg'; e.textContent = msg.text; m.append(e); } else m.append(renderMd(msg.text)); }));
   if (guideActive()) root.append(guideCard());
   if (!busy) renderStartChips(root);
@@ -382,7 +382,7 @@ $('save-status').onclick = () => panel('settings');
 $('composer').onsubmit = e => { e.preventDefault(); if (send($('chat-input').value)) { $('chat-input').value = ''; if (curHandle) curHandle.reset(); } };
 $('chat-input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('composer').requestSubmit(); } };
 
-const docText = () => '# ' + currentProject().name + ' PRD\n\n> 질문 답변을 정리한 설계 초안입니다. [미정] 항목과 자료 원문을 확인하세요.\n\n' + Prompt.docSections.map(g => `## ${g.title}\n` + g.ids.map(id => `### ${sectionById(id).title}\n${sectionBody(id) || '[미정] 질문에 답하거나 AI 제안을 검토해 주세요.'}`).join('\n\n')).join('\n\n');
+const docText = () => Planning.finalize('# ' + currentProject().name + ' PRD\n\n> 질문 답변을 정리한 설계 초안입니다. [미정] 항목과 자료 원문을 확인하세요.\n\n' + Prompt.docSections.map(g => `## ${g.title}\n` + g.ids.map(id => `### ${sectionById(id).title}\n${sectionBody(id) || '[미정] 질문에 답하거나 AI 제안을 검토해 주세요.'}`).join('\n\n')).join('\n\n'));
 $('copy-doc').onclick = async () => { try { await navigator.clipboard.writeText(docText()); toast('기획서를 복사했어요.'); } catch { toast('복사 권한이 없어요. MD 다운로드를 사용해 주세요.'); } };
 function download(blob, name) { const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 $('download-doc').onclick = () => download(new Blob([docText()], {type:'text/markdown;charset=utf-8'}), (currentProject().name.replace(/[\\/:*?"<>|]/g, '') || 'PRD') + '-PRD.md');

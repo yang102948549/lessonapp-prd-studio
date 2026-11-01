@@ -1,7 +1,7 @@
 const $ = id => document.getElementById(id);
 const STORAGE = 'lessonapp.workspace.v1', PROJECTS_KEY = 'oni.projects.v1', DEFAULT_NAME = '나의 수업 웹앱', MAX_PROJECTS = 20, QUOTA_BYTES = 5*1024*1024;
 const definitions = Planning.steps;
-const fresh = () => ({version:4,step:0,answers:{},messages:[],draft:'',previousDraft:'',extraSubjects:[]});
+const fresh = () => ({version:5,step:0,answers:{},messages:[],draft:'',previousDraft:'',extraSubjects:[]});
 let state = fresh(), projects = [], currentId = '';
 const uid=()=>'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const loadState=raw=>{try{const saved=Planning.migrate(raw);return saved?{...fresh(),...saved}:fresh();}catch{return fresh();}};
@@ -12,7 +12,7 @@ const currentProject=()=>projects.find(p=>p.id===currentId);
 let selected = new Set(Array.isArray(state.answers[definitions[state.step]?.id])?state.answers[definitions[state.step].id]:[]), apiKey='', model='gemini-3.8-flash', busy=false, editing=false, toastTimer, chatMode='answer';
 const deletedIds=new Set();
 function mergeStored(){try{const all=JSON.parse(localStorage.getItem(PROJECTS_KEY)||'null');(all?.items||[]).forEach(p=>{if(p.id&&!deletedIds.has(p.id)&&!projects.some(x=>x.id===p.id))projects.push({id:p.id,name:p.name||DEFAULT_NAME,updated:p.updated||0,state:p.state});});}catch{}}
-function renderSaveStatus(){$('save-status').textContent=`${projects.length}/${MAX_PROJECTS}개 · 이 브라우저에만 저장`;}
+function renderSaveStatus(){$('save-status').textContent=`${projects.length}/${MAX_PROJECTS}개, 이 브라우저에만 저장`;}
 function persist(){try{mergeStored();const p=currentProject();p.state=state;p.updated=Date.now();localStorage.setItem(PROJECTS_KEY,JSON.stringify({current:currentId,items:projects}));renderSaveStatus();}catch{$('save-status').textContent='저장 공간 부족 · MD로 다운로드하세요';}}
 function toast(message,action){const el=$('toast');el.replaceChildren(document.createTextNode(message));if(action){const b=document.createElement('button');b.type='button';b.textContent=action.label;b.onclick=()=>{el.style.display='none';action.run();};el.append(b);}el.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.style.display='none',action?7000:2800);}
 function redact(text){return String(text).replace(/AIza[\w-]{20,}/g,'[API 키 삭제됨]').split(apiKey || '\u0000').join(apiKey?'[API 키 삭제됨]':'\u0000');}
@@ -37,7 +37,7 @@ function gradeOptions(){return Array.from({length:state.answers.school==='초등
 function answerText(id){const value=state.answers[id];return Array.isArray(value)?value.join(', '):value||'';}
 function sections(){return Planning.sections(state.answers);}
 function outlineMarkdown(){return '# '+currentProject().name+' PRD\n\n> 질문 답변을 정리한 설계 초안입니다. [미정] 항목과 자료 원문을 확인하세요.\n\n'+sections().map(([title,value],i)=>`## ${i+1}. ${title}\n${value}`).join('\n\n');}
-function markdown(){return state.draft||outlineMarkdown();}
+function markdown(){return Planning.finalize(state.draft||outlineMarkdown());}
 function renderMarkdown(root,text){
   root.replaceChildren();
   text.split(/\n/).forEach(line=>{if(!line.trim())return;const heading=line.match(/^(#{1,4})\s+(.+)/);const item=document.createElement(heading?`h${Math.min(heading[1].length+1,5)}`:'p');
@@ -199,7 +199,7 @@ function renderChips(def,options){
 }
 function render(){
   renderProjects();
-    const messages=$('messages');messages.replaceChildren();let shown=0;state.messages.forEach((m,index)=>{if(m.role==='user'&&m.kind!=='conversation')return;shown++;const div=document.createElement('div');div.className=`message ${m.role==='user'?'user':'assistant'}`;const del=document.createElement('button');del.type='button';del.className='message-delete';del.textContent='삭제';del.setAttribute('aria-label','이 메시지 삭제');del.disabled=busy;del.onclick=()=>{state.messages.splice(index,1);persist();render();};if(m.role!=='user'){const label=document.createElement('span');label.className='message-label';label.textContent='✳ 수업 웹앱 개발 도우미';div.append(label);const {body,choices}=splitChoices(m.text);div.append(renderMd(body));if(choices.length){const row=document.createElement('div');row.className='md-choices';choices.forEach(c=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=c;b.disabled=busy;b.onclick=()=>{$('chat-input').value=c;$('chat-input').focus();$('chat-notice').textContent='선택한 내용을 입력창에 넣었어요. 고쳐 쓴 뒤 전송하면 답변으로 반영됩니다.';};row.append(b);});div.append(row);}}else div.append(document.createTextNode(m.text));div.append(del);messages.append(div);});$('clear-chat').hidden=!shown;$('clear-chat').disabled=busy;
+    const messages=$('messages');messages.replaceChildren();let shown=0;state.messages.forEach((m,index)=>{if(m.role==='user'&&m.kind!=='conversation')return;shown++;const div=document.createElement('div');div.className=`message ${m.role==='user'?'user':'assistant'}`;const del=document.createElement('button');del.type='button';del.className='message-delete';del.textContent='삭제';del.setAttribute('aria-label','이 메시지 삭제');del.disabled=busy;del.onclick=()=>{state.messages.splice(index,1);persist();render();};if(m.role!=='user'){const label=document.createElement('span');label.className='message-label';label.textContent='수업 웹앱 개발 도우미';div.append(label);const {body,choices}=splitChoices(m.text);div.append(renderMd(body));if(choices.length){const row=document.createElement('div');row.className='md-choices';choices.forEach(c=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=c;b.disabled=busy;b.onclick=()=>{$('chat-input').value=c;$('chat-input').focus();$('chat-notice').textContent='선택한 내용을 입력창에 넣었어요. 고쳐 쓴 뒤 전송하면 답변으로 반영됩니다.';};row.append(b);});div.append(row);}}else div.append(document.createTextNode(m.text));div.append(del);messages.append(div);});$('clear-chat').hidden=!shown;$('clear-chat').disabled=busy;
   const def=definitions[state.step];$('chips').replaceChildren();$('custom-wrap').hidden=true;
   const visible=Planning.visibleSteps(state.answers);
 

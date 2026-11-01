@@ -137,7 +137,7 @@ server.registerTool('build_prd', {
   const todo = Planning.checks(answers).filter(c => !c.done).map(c => c.label);
   const issues = Planning.conflicts(answers);
   const notes = [todo.length ? `빠진 핵심 항목: ${todo.join(', ')}` : '', issues.length ? `확인할 충돌:\n${issues.map(i => '- ' + i).join('\n')}` : ''].filter(Boolean).join('\n\n');
-  return text(`# ${title} PRD\n\n> 질문 답변을 정리한 설계 초안입니다. [미정] 항목과 자료 원문을 확인하세요.\n\n${cur}${body}${notes ? '\n\n---\n' + notes : ''}`);
+  return text(Planning.finalize(`# ${title} PRD\n\n> 질문 답변을 정리한 설계 초안입니다. [미정] 항목과 자료 원문을 확인하세요.\n\n${cur}${body}${notes ? '\n\n---\n' + notes : ''}`));
 });
 
 await server.connect(new StdioServerTransport());
