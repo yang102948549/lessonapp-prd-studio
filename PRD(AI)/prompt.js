@@ -52,6 +52,7 @@ ${groupLines}
 10. 답변(reply)은 읽기 편하게 짧게(대체로 3~7문장), 필요하면 굵은 글씨와 짧은 목록만 씁니다. 훈계하거나 칭찬을 남발하지 마세요.
 
 [PRD 갱신 규칙]
+- 교사가 방금 물은 항목에 선택지나 칩이 아닌 자기 말로 답해도 그것이 그 항목의 답입니다. 화면의 선택지 목록에 없는 답(예: 앱의 형태로 "모의 재판", "역할극")도 그대로 그 섹션에 기록하고 다음 항목으로 넘어갑니다. 교사가 답한 항목을 다시 묻지 마세요. 교사의 말이 답이 아니라 되묻는 질문이면 먼저 답해 주고 그 항목을 이어서 묻습니다.
 - 이번 대화로 새로 알게 된 내용이 있는 섹션만 updates에 담습니다. 변화가 없으면 updates는 빈 배열입니다.
 - updates의 markdown은 해당 섹션의 "전체 새 내용"입니다. 현재 PRD에 이미 있는 내용(교사가 직접 고친 것 포함)은 유지하고 새 내용을 합쳐 쓰세요.
 - 교사가 말한 내용만 사실로 적습니다. 당신이 제안한 것은 "[제안]"을 붙이고, 교사가 아직 확정하지 않았으면 해당 항목에 [미정]이라고 적습니다.
@@ -67,11 +68,13 @@ title은 앱을 부르기 좋은 짧은 이름(15자 이내)입니다. 아직 �
 focus는 이번 답변의 마지막 질문이 다루는 PRD 섹션 id입니다(예: flow). 화면의 '현재 단계' 표시에 쓰입니다.`;
 
   /* 현재 PRD 상태와 대화 기록을 하나의 요청 본문으로 */
-  function chatPrompt(messages, doc) {
-    const next = sections.find(s => !(doc[s.id] || '').trim());
+  /* asked: 직전 도우미 메시지가 물은 항목. 교사의 마지막 말은 그 항목의 답으로 보고, 다음 질문 후보에서 뺀다 */
+  function chatPrompt(messages, doc, asked) {
+    const askedSec = sections.find(s => s.id === asked && !(doc[s.id] || '').trim());
+    const next = sections.find(s => s !== askedSec && !(doc[s.id] || '').trim());
     const current = sections.map(s => `### ${s.id} (${s.title})\n${(doc[s.id] || '').trim() || '(비어 있음)'}`).join('\n\n');
     const history = messages.slice(-30).map(m => `${m.role === 'user' ? '교사' : '도우미'}: ${m.text}`).join('\n\n');
-    return `[현재 PRD 초안]\n${current}\n\n[지금까지의 대화]\n${history}\n\n위 대화의 마지막 교사 메시지에 답하세요.${next ? ` 다음에 물을 항목은 질문 순서상 "${next.title}"(${next.id})입니다.` : ''}`;
+    return `[현재 PRD 초안]\n${current}\n\n[지금까지의 대화]\n${history}\n\n위 대화의 마지막 교사 메시지에 답하세요.${askedSec ? ` 직전에 물은 항목은 "${askedSec.title}"(${askedSec.id})입니다. 교사의 마지막 메시지가 그 답이면 선택지에 없는 말이어도 updates에 ${askedSec.id}로 기록하세요.` : ''}${next ? ` 다음에 물을 항목은 질문 순서상 "${next.title}"(${next.id})입니다.` : ''}`;
   }
 
   const chatSchema = {type:'OBJECT', properties:{

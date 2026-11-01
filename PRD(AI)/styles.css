@@ -106,7 +106,7 @@ main{flex:1;min-width:0;display:flex;flex-direction:column}
 .cur-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0 0}
 .cur-field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);min-width:0}
 .cur-field select{width:100%;min-width:0;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font-size:15px}.cur-field select:disabled{opacity:.5}
-.cur-list{margin:12px 0;max-height:min(360px,48dvh);overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+.cur-list{margin:12px 0;height:min(360px,48dvh);overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
 .cur-item{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;border:0;border-bottom:1px solid var(--border);border-radius:0;padding:11px 12px;background:transparent;font-size:15px;line-height:1.65;color:var(--fg)}
 .cur-item:last-child{border-bottom:0}.cur-item:hover,.cur-item.on{background:var(--surface)}
 .cur-mark{flex:none;width:19px;height:19px;margin-top:3px;border:1.5px solid var(--muted);border-radius:5px;display:grid;place-items:center;font-size:13px;line-height:1}

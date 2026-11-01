@@ -275,6 +275,14 @@ function parseJSON(text) {
 }
 
 /* ---------- 대화 ---------- */
+/* 교사가 직접 쓴 답을 AI가 기록하지 않았을 때 그 말을 그대로 기록한다(같은 질문이 반복되지 않게). 되묻는 질문은 제외 */
+const isQuestion = t => /[?？]\s*$|가능할까|가능해|어떻게|뭐가 나|무엇이 나|추천해|모르겠|알려 ?주/.test(t);
+function keepTeacherAnswer(asked, changed) {
+  const last = [...state.messages].reverse().find(m => m.role === 'user');
+  if (!asked || !sectionById(asked) || changed.includes(asked) || isFilled(asked) || !last || isQuestion(last.text.trim())) return;
+  state.doc[asked] = redact(last.text.trim().split('\n').map(l => l.trim()).filter(Boolean).map(l => l.startsWith('- ') ? l : '- ' + l).join('\n')); changed.push(asked);
+  if (state.focus === asked) state.focus = (SECTIONS.find(s => !isFilled(s.id)) || {}).id || '';
+}
 function applyReply(json) {
   const reply = String(json.reply || '').trim(); if (!reply) throw new Error('AI가 답변을 만들지 못했어요. 다시 시도해 주세요.');
   const known = new Set(SECTIONS.map(s => s.id)), changed = [];
@@ -290,8 +298,9 @@ async function askAI() {
   busy = true; $('chat-notice').textContent = ''; render(); scrollChat();
   let changed = [];
   try {
-    const json = parseJSON(await requestAI(Prompt.role, Prompt.chatPrompt(state.messages, state.doc), Prompt.chatSchema, 4096));
-    changed = applyReply(json);
+    const asked = state.focus;
+    const json = parseJSON(await requestAI(Prompt.role, Prompt.chatPrompt(state.messages, state.doc, asked), Prompt.chatSchema, 4096));
+    changed = applyReply(json); keepTeacherAnswer(asked, changed);
   } catch (error) {
     state.messages.push({role:'assistant', text:error.message + ' (보내신 말씀은 보관되어 있어요. [다시 시도]를 눌러 주세요.)', error:true});
   } finally { busy = false; persist(); render(changed); scrollChat(); if (changed.length && !$('detail-panel').classList.contains('mobile-open')) toast(`기획서 ${changed.length}곳을 채웠어요`); if (state.messages.at(-1)?.error) addRetry(); $('chat-input').focus(); }

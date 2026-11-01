@@ -121,8 +121,10 @@ globalThis.Curriculum = (() => {
       };
       const paint = () => {
         list.replaceChildren();
-        if (!(q.value.trim() || sSubject.value || sBand.value)) { list.append(el('p', 'cur-hint', '낱말을 검색하거나 학년군·교과를 고르면 성취기준이 나와요.')); paintTray(); return; }
-        const r = search({bands: bandsNow(), subject: sSubject.value, unitKey: sUnit.value, query: q.value, limit});
+        /* 한글을 치는 도중의 낱자(ㅇ, 인ㄱ의 ㄱ)는 빼고 찾는다. 결과가 한 글자마다 사라졌다 나타나지 않게 */
+        const query = q.value.replace(/[ㄱ-ㆎ]+$/, '');
+        if (!(query.trim() || sSubject.value || sBand.value)) { list.append(el('p', 'cur-hint', '낱말을 검색하거나 학년군·교과를 고르면 성취기준이 나와요.')); paintTray(); return; }
+        const r = search({bands: bandsNow(), subject: sSubject.value, unitKey: sUnit.value, query, limit});
         r.items.forEach(s => {
           const key = `${s.id}|${s.course}`, on = picked.has(key);
           const row = el('button', 'cur-item' + (on ? ' on' : '')); row.type = 'button'; row.setAttribute('aria-pressed', String(on));
@@ -139,7 +141,7 @@ globalThis.Curriculum = (() => {
         }
         paintTray();
       };
-      const refilter = () => { limit = 60; paint(); };
+      const refilter = () => { limit = 60; paint(); list.scrollTop = 0; };
       fill(sBand, bands.map(b => [b, b]), bands.length > 1 ? '전체 학년군' : null, bands.length === 1 ? bands[0] : '');
       syncSubjects(); syncUnits(); paint();
       sBand.onchange = () => { syncSubjects(); syncUnits(); refilter(); };

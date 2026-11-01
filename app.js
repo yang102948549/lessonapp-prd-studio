@@ -227,7 +227,7 @@ function applyAnswer(def,value){
   if(def.id==='activity'&&changed)delete state.answers.method;
   if(def.id==='teacher'&&String(value).includes('별도 관리 화면 없음'))delete state.answers.teacherView;
   if(changed&&['school','subjects','activity','method'].includes(def.id)&&state.answers.flow){$('chat-notice').textContent='활동의 방향을 바꿨어요. 기존 자료·활동 흐름·규칙은 보존했으니 새 방향에 맞는지 다시 확인해 주세요.';}
-  state.answers[def.id]=value;if(state.draft)
+  state.answers[def.id]=value;if(state.draft&&changed)state.draftStale=true;
   return changed;
 }
 function accept(value){const def=definitions[state.step];if(!def)return;

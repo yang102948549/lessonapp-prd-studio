@@ -164,9 +164,16 @@ globalThis.Planning = (() => {
   const groups=['수업 맥락','활동 설계','학생 참여','사용 상황','데이터와 공유','교사 화면','화면 디자인','구성과 마무리'];
   const step=(id,title,group,question,help,options=[],more={})=>({id,title,group,question,help,options,placeholder:'선택지에 없는 내용도 자유롭게 이야기해 주세요.',...more});
   /* 결과를 기기 밖에 저장·공유해야 하는지(교사 취합·친구 공유·누적). 미정이면 필요하다고 가정 */
-  const wantsUpload=a=>{const i=value(a,'interaction');return !i||/이미지|그림|첨부|녹음/.test(i);};
+  /* 선택지 대신 직접 쓴 답도 같은 판단을 받게 한다. 선택지 문구는 정해진 낱말로, 직접 쓴 문장은 넓은 낱말로 보고,
+     그래도 알 수 없으면 뒤따르는 질문을 숨기지 않는 쪽(더 묻는 쪽)으로 판단한다. */
+  const partsOf=(a,id)=>(Array.isArray(a[id])?a[id]:[a[id]]).filter(x=>typeof x==='string'&&x.trim());
+  const isKnown=(id,p)=>{const s=steps.find(x=>x.id===id);return !!s&&s.options.includes(p);};
+  const wantsUpload=a=>{const i=value(a,'interaction');return !i||/이미지|그림|첨부|녹음|사진|파일|업로드|올리|올려|촬영|음성|영상/.test(i);};
   const AI_RE=/학생이 활동 중 AI|AI가 피드백|챗봇이 AI|AI 모델이 실시간/;
-  const needsShare=a=>{const r=value(a,'results');return !r||/^미정/.test(r)||/교사가 모아|친구|누적/.test(r);};
+  const usesAI=(a,id)=>partsOf(a,id).some(p=>isKnown(id,p)?AI_RE.test(p):/AI|인공지능|챗봇|GPT|제미나이|Gemini|클로드|Claude/i.test(p)&&!/없음|안 씀|안 써|쓰지 않|사용하지 않|수업 전|미리 만들/.test(p));
+  const filesUp=a=>{const t=val(a,'files');return /올림|올려|올리|업로드|첨부/.test(t)&&!/없음|안 올|올리지 않/.test(t);};
+  const needsShare=a=>{const ps=partsOf(a,'results');if(!ps.length||ps.some(p=>/^미정/.test(p)))return true;
+    return ps.some(p=>isKnown('results',p)?/교사가 모아|친구|누적/.test(p):!/내 화면|내 기기|저장하지 않|저장 안|사라져도|남기지 않|필요 없/.test(p));};
   const steps=[
     step('school','학교급',0,'어느 학교의 수업을 준비하고 계신가요?','학교급을 선택하면 해당 학년이 나타나요.',['초등학교','중학교','고등학교'],{placeholder:'예: 초등학교 5, 6학년이 함께 참여해요'}),
     step('grades','대상 학년',0,'어떤 학년이 함께하나요?','복수 학년을 선택할 수 있어요. 선택 후 완료를 눌러 주세요.',[],{multi:true,placeholder:'예: 5학년과 6학년'}),
@@ -232,7 +239,7 @@ globalThis.Planning = (() => {
   const value=(answers,id)=>Array.isArray(answers[id])?answers[id].join(' / '):answers[id]||'';
   const stepById=id=>steps.find(s=>s.id===id);
   const val=(a,id)=>{const s=stepById(id);return s&&(!s.when||s.when(a))?value(a,id):'';};
-  const isRealtime=a=>/몇 초 안에|실시간|동시에 공개/.test(val(a,'live'))||/동시에|모든 학생|실시간/.test(value(a,'control'))||/다음 단계 공개|입력 잠금|일시정지/.test(value(a,'teacher')+' '+value(a,'teacherView'));
+  const isRealtime=a=>/몇 초 안에|실시간|동시에 공개|즉시|곧바로/.test(val(a,'live'))||/동시에|모든 학생|실시간|교사가 넘기|선생님이 넘기/.test(value(a,'control'))||/다음 단계 공개|입력 잠금|일시정지|잠그|멈추/.test(value(a,'teacher')+' '+value(a,'teacherView'));
   const stacks={
     static:{label:'정적 웹페이지 + GitHub Pages',one:'서버 없이 브라우저 안에서만 동작해요',
       frontend:'HTML·CSS·JavaScript (프레임워크 없이 파일 1~3개)',backend:'없음. 이어서 하기가 필요하면 브라우저 저장소(localStorage)만 사용',deploy:'GitHub Pages 무료 링크, QR로 공유',
@@ -253,10 +260,10 @@ globalThis.Planning = (() => {
   };
   const stackOrder=['static','appsscript','firebase','supabase'];
   function recommend(a,force){
-    const shared=needsShare(a),rt=isRealtime(a),files=/올림/.test(val(a,'files')),ai=AI_RE.test(val(a,'aiuse')+' '+val(a,'detail')),
+    const shared=needsShare(a),rt=isRealtime(a),files=filesUp(a),ai=usesAI(a,'aiuse')||AI_RE.test(val(a,'detail')),
       scale=/학교 전체/.test(value(a,'participants'))?'school':/여러 학급/.test(value(a,'participants'))?'multi':'single',
       port=/포트폴리오/.test(val(a,'retention'))||/누적/.test(value(a,'results')),sheet=/구글 시트|CSV/.test(val(a,'export')),
-      offline=/오프라인/.test(value(a,'network')),google=/구글 계정으로 로그인/.test(val(a,'identity')),code=/개별 참여코드|입장코드|모둠 코드|모둠방/.test(val(a,'identity')),free=/무료만|무료 범위에서/.test(value(a,'selfops'));
+      offline=/오프라인/.test(value(a,'network')),google=/구글 계정으로 로그인/.test(val(a,'identity')),code=/개별 참여코드|입장코드|모둠 코드|모둠방|출석번호|코드/.test(val(a,'identity')),free=/무료만|무료 범위에서/.test(value(a,'selfops'));
     const need=shared||rt;let id;
     if(offline)id='static';
     else if(need&&(files||port||scale==='school'))id='supabase';
@@ -305,7 +312,7 @@ globalThis.Planning = (() => {
     if(subjectSpecific){const list=bySubject(answers,id,...subjectSpecific);if(list.length)return list;}if(['method','materials','flow','rules','feedback'].includes(id)){const key=id==='method'?'methods':id;const seen=new Set(subjectGenerated(id,answers).map(x=>x.label));return [...subjectGenerated(id,answers),...selectedBranches(answers).flatMap(b=>b[key].filter(label=>{if(seen.has(label))return false;seen.add(label);return true;}).map(label=>({label,group:b.label,value:label})))];}return steps.find(s=>s.id===id)?.options||[];}
   /* 앞선 답변에 맞지 않는 선택지는 숨기고, 필요한 선택지는 추가한다 */
   const lab=o=>typeof o==='string'?o:o.label;
-  const unitInfo=a=>{const u=val(a,'unit');return {set:!!u,solo:/^개인별/.test(u),pair:/^짝/.test(u),group:/^모둠/.test(u),shared:/기기 1대/.test(u),each:/각자 기기/.test(u),cls:/^학급 전체/.test(u)};};
+  const unitInfo=a=>{const u=val(a,'unit');return {set:!!u,solo:/개인|혼자/.test(u),pair:/짝|두 명|2명/.test(u),group:/모둠|조별|팀/.test(u),shared:/기기 1대|한 대|1대로|1대를/.test(u),each:/각자 기기|각자의 기기|각자 태블릿|각자 노트북|1인 1/.test(u),cls:/학급 전체|반 전체|반 모두/.test(u)};};
   const DETAIL={
     '시뮬레이션·실험':{match:/시뮬레이션/,items:['슬라이더 1개로 값을 바꾸며 변화를 관찰','슬라이더 2개 이상(변수 여러 개)을 함께 조절','값을 직접 입력해 확인(범위 안내·오류 안내)','재생·단계 버튼으로 과정을 순서대로 보기','그래프·도형·애니메이션이 값에 따라 실시간으로 변함','기준 자료와 조절한 자료를 나란히 비교','수치·계산식·표를 함께 보여 줌','초기값으로 되돌리는 버튼','조작한 뒤 발견한 규칙을 글로 쓰는 칸']},
     '카드·자료 탐색':{match:/탐색/,items:['카드·인물·자료를 고르면 설명이 펼쳐짐','단어·문장을 누르면 뜻·해석이 팝업으로 나옴','모든 자료를 열어 본 뒤에 퀴즈가 열림','읽은 자료에 읽음 표시와 진행 정도(예: 3/4)']},
@@ -370,7 +377,7 @@ globalThis.Planning = (() => {
         {const l2=sh?list:keep(/제출|모아보기|CSV|키워드|투표|차트|숨기기/);return l2.some(o=>/(카드로|키워드로) 모아보기/.test(lab(o)))?l2.filter(o=>!/^답변 카드 모아보기|^키워드 모아보기/.test(lab(o))):l2;}
       case 'exclusions':{const tch=val(a,'teacher');let o=list;const drop=re=>{o=o.filter(x=>!re.test(lab(x)));};
         if(/구글 계정으로 로그인/.test(val(a,'identity')))drop(/회원가입·로그인/);if(tch&&!/별도 관리 화면 없음/.test(tch))drop(/관리 화면/);if(isRealtime(a))drop(/실시간 학급 집계/);
-        if(AI_RE.test(val(a,'aiuse')))drop(/외부 AI 호출/);if(/올림/.test(val(a,'files')))drop(/업로드/);if(/친구.*(의견|답글)/.test(inter))drop(/채팅·댓글/);return o;}
+        if(usesAI(a,'aiuse'))drop(/외부 AI 호출/);if(filesUp(a))drop(/업로드/);if(/친구.*(의견|답글)/.test(inter))drop(/채팅·댓글/);return o;}
       case 'extra':
         return sh?list:keep(/다시 들어오면|두 번 접속/);
       case 'acceptance':{const kind=val(a,'kind'),media=val(a,'media'),out=val(a,'output');let l=list;
@@ -500,7 +507,7 @@ globalThis.Planning = (() => {
   function finalize(md){let t=String(md||'').replace(/\n*<!-- dev-guide:start -->[\s\S]*?<!-- dev-guide:end -->\n*/g,'\n\n').replace(/\n*> 개발 AI에게:[^\n]*\n*/g,'\n\n').trim();const nl=t.indexOf('\n');t=/^# /.test(t)?(nl<0?t:t.slice(0,nl))+'\n\n'+devNote+(nl<0?'':'\n\n'+t.slice(nl+1).trim()):devNote+'\n\n'+t;return t+'\n\n'+devGuide+'\n';}
   function sections(answers){return sectionDefs.map(([title,ids])=>[title,ids.filter(id=>!stepById(id).when||stepById(id).when(answers)).map(id=>{const v=value(answers,id);return `### ${stepById(id).title}\n${v?v+(id==='stack'&&!/^미정/.test(v)?'\n'+stackText(answers):''):'[미정] 질문에 답하거나 AI 제안을 검토해 주세요.'}`;}).join('\n\n')]);}
   function checks(answers){const ids=['idea','direction','objective','activity','method','materials','flow','control','rules','feedback','interaction','input','output','participants','identity','results','aiuse','stack','acceptance'];return ids.map(id=>({id,label:steps.find(s=>s.id===id).title,done:!!value(answers,id)&&!/^미정/.test(value(answers,id))}));}
-  function conflicts(answers){const v=id=>val(answers,id);const issues=[];const rt=isRealtime(answers),shared=needsShare(answers),ai=AI_RE.test(v('aiuse')),stack=stackByLabel(answers.stack);
+  function conflicts(answers){const v=id=>val(answers,id);const issues=[];const rt=isRealtime(answers),shared=needsShare(answers),ai=usesAI(answers,'aiuse'),stack=stackByLabel(answers.stack);
     if(/구글 계정으로 로그인/.test(v('identity'))&&/구글 계정에 제한/.test(v('network')))issues.push('학생 구글 계정에 제한이 있는데 구글 로그인을 쓰려고 해요. 별명·코드 방식도 검토해 주세요.');
     if(/오프라인/.test(v('network'))&&(shared||rt))issues.push('인터넷 없이 써야 하는데 결과를 모으거나 실시간으로 공유하려고 해요. 하나를 정해 주세요.');
     if(!shared&&answers.results&&/참여 현황|결과를 모아|공개 여부/.test(v('teacher')))issues.push('교사가 학생 결과를 보려면 “결과물의 행방”에서 “교사가 모아서 봄”을 선택해야 해요.');
