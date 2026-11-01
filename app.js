@@ -208,7 +208,7 @@ function render(){
 
   $('chat-input').placeholder=chatMode==='coach'?'예: 이 활동에 어떤 자료가 필요할까요? 두 방식을 비교해 주세요.':def?def.placeholder:'기획서에서 바꾸고 싶은 점을 이야기해 주세요';
   $('continue').hidden=!def?.multi;$('continue').disabled=!selected.size||busy;
-  $('skip-step').hidden=!def||state.step<5;$('skip-step').disabled=busy;
+  ['skip-step','pick-step','finish-steps'].forEach(id=>{$(id).hidden=!def||state.step<5;$(id).disabled=busy;});
   $('ai-suggest').hidden=!def||state.step<5;$('ai-suggest').disabled=busy;
   $('selection-note').textContent=def?.multi?'여러 개 선택 가능 · 직접 입력한 내용도 함께 반영해요':'';
   $('previous-answer').hidden=!def||!answerText(def.id);$('clear-answer').hidden=!def||!answerText(def.id);$('clear-answer').disabled=busy;$('previous-answer').textContent=def&&answerText(def.id)?`이전에 정한 내용: ${answerText(def.id)}`:'';
@@ -317,7 +317,14 @@ document.querySelectorAll('.sb-toggle').forEach(btn=>{const target=$(btn.dataset
 $('new-chat').onclick=newProject;$('project-title').onclick=()=>renameProject();;
 render();
 
-$('skip-step').onclick=()=>accept('미정 · 추가 구체화 필요');
+/* 질문 순서에 묶이지 않게: 건너뛰기, 질문 고르기, 여기서 마치기 (PRD(AI)와 같은 이름과 동작) */
+const SKIP_TEXT='미정 · 나중에 정하기로 함';
+$('skip-step').onclick=()=>accept(SKIP_TEXT);
+$('pick-step').onclick=()=>{panel('map');$('map-expand').click();toast('답하고 싶은 질문 상자를 누른 뒤 "이 질문에 답하기"를 누르세요.');};
+$('finish-steps').onclick=async()=>{if(busy)return;const open=()=>definitions.filter(d=>isVisible(d)&&!isAnswered(d.id));const n=open().length;
+  if(n&&!await openModal({title:'여기서 마칠까요?',message:`남은 질문 ${n}개를 미정으로 두고 기획서를 마무리해요. 미정 항목은 나중에 계획 지도에서 언제든 채울 수 있어요.`,ok:'마치기'}))return;
+  for(let i=0;i<5;i++){const left=open();if(!left.length)break;left.forEach(d=>{state.answers[d.id]=SKIP_TEXT;});}
+  state.step=definitions.length;syncSelected();persist();render();scrollChat();toast(n?`남은 질문 ${n}개를 미정으로 두고 마무리했어요.`:'기획서를 마무리했어요.');};
 $('ai-suggest').onclick=()=>coach($('chat-input').value.trim()||'지금 질문에 대한 구체적인 답변을 제안해 주세요.',true);
 $('ask-ai').onclick=async()=>{if(busy)return;const text=$('chat-input').value.trim();if(!text){$('chat-notice').textContent='AI에게 물어볼 내용을 입력창에 적어 주세요.';$('chat-input').focus();return;}$('chat-notice').textContent='';if(/AIza[\w-]{20,}/.test(text)||(apiKey&&text.includes(apiKey))){$('chat-input').value='';keySettings();$('key-status').textContent='API 키는 대화가 아닌 이 입력란에 넣어 주세요.';return;}if(await coach(text))$('chat-input').value='';};
 $('clear-chat').onclick=()=>{if(busy)return;state.messages=[];persist();render();toast('대화를 지웠어요. 기획 답변은 그대로 유지돼요.');};
